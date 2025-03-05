@@ -118,15 +118,26 @@ export interface Unit extends BaseEntity {
 }
 
 export interface Incident extends BaseEntity {
-  type: string;
-  classification: number;
+  type: 'safety' | 'maintenance' | 'quality';
   description: string;
-  reportedBy: string;
-  dateReported: Date;
-  status: string;
+  classification: 1 | 2 | 3;
+  status: 'pending' | 'in_progress' | 'resolved';
+  reportDate: string;
+  reporterId: string;
+  reporterName: string;
+  location: string;
+  affectedArea: string;
+  immediateActions?: string;
+  resolutionDate?: string;
+  resolutionNotes?: string;
+  assignedTo?: string;
+  attachments?: string[];
 }
 
 export interface Parameter extends BaseEntity {
   value: string | number;
   description: string;
-} 
+}
+
+export type CreateIncidentData = Omit<Incident, keyof BaseEntity>;
+export type UpdateIncidentData = Partial<CreateIncidentData>; 

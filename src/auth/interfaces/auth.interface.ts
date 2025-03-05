@@ -12,10 +12,10 @@ export type UserRole = 'admin' | 'manager' | 'worker' | 'viewer';
 
 export interface Permission {
   resource: string;
-  actions: Action[];
+  action: Action;
 }
 
-export type Action = 'create' | 'read' | 'update' | 'delete' | 'list';
+export type Action = 'create' | 'read' | 'update' | 'delete';
 
 export interface AuthState {
   user: AuthUser | null;
@@ -32,4 +32,11 @@ export interface RegisterUserData extends LoginCredentials {
   displayName: string;
   role: UserRole;
   permissions?: Permission[];
+}
+
+export interface User {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: string;
 } 

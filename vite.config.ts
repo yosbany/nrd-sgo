@@ -4,9 +4,12 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/nrd-sgo/', // Repository name
-  build: {
-    outDir: 'dist',
-    sourcemap: true
+  base: '/sgo-app/',
+  server: {
+    port: 3000,
+    open: true
+  },
+  css: {
+    postcss: './postcss.config.cjs'
   }
 })

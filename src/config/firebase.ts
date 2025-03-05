@@ -1,17 +1,26 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  // Replace with your Firebase config
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyCrq7Am9kiE3levq6hOGBuh_wb3lGxfdT0",
+  authDomain: "nrd-sgo.firebaseapp.com",
+  databaseURL: "https://nrd-sgo-default-rtdb.firebaseio.com",
+  projectId: "nrd-sgo",
+  storageBucket: "nrd-sgo.appspot.com",
+  messagingSenderId: "386786255981",
+  appId: "1:386786255981:web:95cabd428cf0ca17c58b64"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Get Firebase services
+export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const auth = getAuth(app); 
+export const storage = getStorage(app);
+export const rtdb = getDatabase(app);
+
+export default app; 
