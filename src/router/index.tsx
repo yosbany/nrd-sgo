@@ -1,5 +1,5 @@
 import React from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Link } from 'react-router-dom';
 import LoginPage from '../presentation/pages/auth/LoginPage';
 import MainLayout from '../presentation/layouts/MainLayout';
 import DashboardPage from '../presentation/pages/dashboard/DashboardPage';
@@ -15,7 +15,7 @@ const authService = new AuthService();
 
 const PrivateRoute = () => {
   const isAuthenticated = authService.getCurrentUser() !== null;
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
 };
 
 const ErrorPage = () => (
@@ -28,12 +28,12 @@ const ErrorPage = () => (
         <p className="text-gray-600 dark:text-gray-300 mb-4">
           La página que estás buscando no existe.
         </p>
-        <a
-          href="/sgo-app"
+        <Link
+          to="/"
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Volver al inicio
-        </a>
+        </Link>
       </div>
     </div>
   </div>
