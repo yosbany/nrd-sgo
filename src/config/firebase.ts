@@ -17,8 +17,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Get Firebase services
-const auth = getAuth(app);
-const db = initializeFirestore(app, {
+export const auth = getAuth(app);
+export const db = initializeFirestore(app, {
   cacheSizeBytes: CACHE_SIZE_UNLIMITED,
   experimentalForceLongPolling: true
 });
