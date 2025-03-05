@@ -10,13 +10,10 @@ import {
   DocumentData,
   Firestore,
   CollectionReference,
-  enableIndexedDbPersistence,
-  initializeFirestore,
   waitForPendingWrites,
   enableNetwork,
   disableNetwork,
-  FirestoreError,
-  CACHE_SIZE_UNLIMITED
+  FirestoreError
 } from 'firebase/firestore';
 import { db, auth } from '../../config/firebase';
 import { BaseEntity, BaseRepository } from '../interfaces/base.interface';
@@ -27,36 +24,9 @@ export abstract class FirebaseBaseRepository<T extends BaseEntity> implements Ba
   private _collectionRef: CollectionReference | null = null;
   private retryAttempts = 5;
   private retryDelay = 2000;
-  private static initialized = false;
 
   constructor() {
     this.db = db;
-    this.initializeFirestore();
-  }
-
-  private async initializeFirestore() {
-    if (!FirebaseBaseRepository.initialized) {
-      try {
-        // Initialize Firestore with cache settings
-        this.db = initializeFirestore(this.db.app, {
-          cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-          experimentalForceLongPolling: true
-        });
-
-        FirebaseBaseRepository.initialized = true;
-        console.log('Firestore initialized with cache settings');
-      } catch (error) {
-        if (error instanceof FirestoreError) {
-          if (error.code === 'failed-precondition') {
-            console.warn('Multiple tabs open, using existing Firestore instance');
-          } else {
-            console.warn('Error initializing Firestore:', error.message);
-          }
-        } else {
-          console.warn('Unknown error initializing Firestore:', error);
-        }
-      }
-    }
   }
 
   protected async ensureAuthenticated() {

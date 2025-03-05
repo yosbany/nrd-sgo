@@ -95,6 +95,6 @@ export const router = createBrowserRouter(
     }
   ],
   {
-    basename: '/sgo-app'
+    basename: '/nrd-sgo'
   }
 ); 
