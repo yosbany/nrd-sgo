@@ -1,12 +1,15 @@
 import React from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import MainLayout from '../presentation/layouts/MainLayout';
+import { createBrowserRouter } from 'react-router-dom';
 import LoginPage from '../presentation/pages/auth/LoginPage';
+import MainLayout from '../presentation/layouts/MainLayout';
 import DashboardPage from '../presentation/pages/dashboard/DashboardPage';
 import IncidentsPage from '../presentation/pages/incidents/IncidentsPage';
-import { AuthService } from '../auth/services/auth.service';
+import IncidentDetail from '../presentation/pages/incidents/IncidentDetail';
+import IncidentForm from '../presentation/pages/incidents/IncidentForm';
 import ErrorBoundary from '../presentation/components/common/ErrorBoundary';
-// ... other imports ...
+import { RequireAuth } from '../auth/decorators/auth.decorator';
+import { AuthService } from '../auth/services/auth.service';
+import { Navigate, Outlet } from 'react-router-dom';
 
 const authService = new AuthService();
 
@@ -36,65 +39,43 @@ const ErrorPage = () => (
   </div>
 );
 
-export const router = createBrowserRouter(
-  [
-    {
-      path: '/login',
-      element: (
-        <ErrorBoundary>
-          <LoginPage />
-        </ErrorBoundary>
-      )
-    },
-    {
-      element: (
-        <ErrorBoundary>
-          <PrivateRoute />
-        </ErrorBoundary>
-      ),
-      children: [
-        {
-          path: '/',
-          element: (
-            <ErrorBoundary>
-              <MainLayout />
-            </ErrorBoundary>
-          ),
-          children: [
-            {
-              index: true,
-              element: <Navigate to="/dashboard" replace />
-            },
-            {
-              path: 'dashboard',
-              element: (
-                <ErrorBoundary>
-                  <DashboardPage />
-                </ErrorBoundary>
-              )
-            },
-            {
-              path: 'incidents',
-              element: (
-                <ErrorBoundary>
-                  <IncidentsPage />
-                </ErrorBoundary>
-              )
-            }
-          ]
-        }
-      ]
-    },
-    {
-      path: '*',
-      element: (
-        <ErrorBoundary>
-          <ErrorPage />
-        </ErrorBoundary>
-      )
-    }
-  ],
+export const router = createBrowserRouter([
   {
-    basename: '/sgo-app'
+    path: '/',
+    element: <LoginPage />,
+    errorElement: <ErrorBoundary />
+  },
+  {
+    path: '/app',
+    element: <RequireAuth><MainLayout /></RequireAuth>,
+    errorElement: <ErrorBoundary />,
+    children: [
+      {
+        path: '',
+        element: <DashboardPage />
+      },
+      {
+        path: 'incidents',
+        element: <IncidentsPage />
+      },
+      {
+        path: 'incidents/new',
+        element: <IncidentForm />
+      },
+      {
+        path: 'incidents/:id',
+        element: <IncidentDetail />
+      }
+    ]
+  },
+  {
+    path: '*',
+    element: (
+      <ErrorBoundary>
+        <ErrorPage />
+      </ErrorBoundary>
+    )
   }
-); 
+], {
+  basename: '/nrd-sgo'
+}); 
