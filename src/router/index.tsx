@@ -1,21 +1,18 @@
 import React from 'react';
-import { createBrowserRouter, Link } from 'react-router-dom';
-import LoginPage from '../presentation/pages/auth/LoginPage';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import MainLayout from '../presentation/layouts/MainLayout';
+import LoginPage from '../presentation/pages/auth/LoginPage';
 import DashboardPage from '../presentation/pages/dashboard/DashboardPage';
 import IncidentsPage from '../presentation/pages/incidents/IncidentsPage';
-import IncidentDetail from '../presentation/pages/incidents/IncidentDetail';
-import IncidentForm from '../presentation/pages/incidents/IncidentForm';
-import ErrorBoundary from '../presentation/components/common/ErrorBoundary';
-import { RequireAuth } from '../auth/decorators/auth.decorator';
 import { AuthService } from '../auth/services/auth.service';
-import { Navigate, Outlet } from 'react-router-dom';
+import ErrorBoundary from '../presentation/components/common/ErrorBoundary';
+// ... other imports ...
 
 const authService = new AuthService();
 
 const PrivateRoute = () => {
   const isAuthenticated = authService.getCurrentUser() !== null;
-  return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 const ErrorPage = () => (
@@ -28,54 +25,76 @@ const ErrorPage = () => (
         <p className="text-gray-600 dark:text-gray-300 mb-4">
           La página que estás buscando no existe.
         </p>
-        <Link
-          to="/"
+        <a
+          href="/sgo-app"
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Volver al inicio
-        </Link>
+        </a>
       </div>
     </div>
   </div>
 );
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/login',
+      element: (
+        <ErrorBoundary>
+          <LoginPage />
+        </ErrorBoundary>
+      )
+    },
+    {
+      element: (
+        <ErrorBoundary>
+          <PrivateRoute />
+        </ErrorBoundary>
+      ),
+      children: [
+        {
+          path: '/',
+          element: (
+            <ErrorBoundary>
+              <MainLayout />
+            </ErrorBoundary>
+          ),
+          children: [
+            {
+              index: true,
+              element: <Navigate to="/dashboard" replace />
+            },
+            {
+              path: 'dashboard',
+              element: (
+                <ErrorBoundary>
+                  <DashboardPage />
+                </ErrorBoundary>
+              )
+            },
+            {
+              path: 'incidents',
+              element: (
+                <ErrorBoundary>
+                  <IncidentsPage />
+                </ErrorBoundary>
+              )
+            }
+          ]
+        }
+      ]
+    },
+    {
+      path: '*',
+      element: (
+        <ErrorBoundary>
+          <ErrorPage />
+        </ErrorBoundary>
+      )
+    }
+  ],
   {
-    path: '/',
-    element: <LoginPage />,
-    errorElement: <ErrorBoundary />
-  },
-  {
-    path: '/app',
-    element: <RequireAuth><MainLayout /></RequireAuth>,
-    errorElement: <ErrorBoundary />,
-    children: [
-      {
-        path: '',
-        element: <DashboardPage />
-      },
-      {
-        path: 'incidents',
-        element: <IncidentsPage />
-      },
-      {
-        path: 'incidents/new',
-        element: <IncidentForm />
-      },
-      {
-        path: 'incidents/:id',
-        element: <IncidentDetail />
-      }
-    ]
-  },
-  {
-    path: '*',
-    element: (
-      <ErrorBoundary>
-        <ErrorPage />
-      </ErrorBoundary>
-    )
+    basename: '/sgo-app'
   }
-], {
-  basename: '/nrd-sgo'
-}); 
+); 
