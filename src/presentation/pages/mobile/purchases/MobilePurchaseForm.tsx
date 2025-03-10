@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { Supplier } from '@/domain/models/supplier.model';
 import { Product } from '@/domain/models/product.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
+import { QuantityInput } from '@/presentation/components/QuantityInput';
 
 export const MobilePurchaseForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,11 +28,12 @@ export const MobilePurchaseForm: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isGeneralOpen, setIsGeneralOpen] = React.useState(false);
-  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = React.useState<Array<{ id: string; commercialName: string }>>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
-  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string }>>([]);
+  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string; name: string }>>([]);
   const [selectedProduct, setSelectedProduct] = React.useState<string>('');
   const [quantity, setQuantity] = React.useState<number>(1);
+  const [filteredProducts, setFilteredProducts] = React.useState<Product[]>([]);
   const [formData, setFormData] = React.useState<Partial<PurchaseOrder>>({
     orderDate: new Date(),
     status: OrderStatus.PENDING,
@@ -51,9 +53,13 @@ export const MobilePurchaseForm: React.FC = () => {
         new UnitServiceImpl().findAll()
       ]);
       
-      setSuppliers(suppliersData);
+      setSuppliers(suppliersData.map(supplier => ({
+        id: supplier.id,
+        commercialName: supplier.commercialName
+      })));
       setProducts(productsData);
       setUnits(unitsData);
+      setFilteredProducts(productsData);
 
       if (id) {
         const orderService = new PurchaseOrderServiceImpl();
@@ -77,7 +83,6 @@ export const MobilePurchaseForm: React.FC = () => {
 
   const handleAddProduct = () => {
     if (!selectedProduct) {
-      toast.error('Debe seleccionar un producto');
       return;
     }
 
@@ -169,7 +174,7 @@ export const MobilePurchaseForm: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32">
-      <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-lg mx-auto">
         <Collapsible open={isGeneralOpen} onOpenChange={setIsGeneralOpen}>
           <div className="bg-white rounded-lg shadow-sm border">
             <div 
@@ -246,53 +251,113 @@ export const MobilePurchaseForm: React.FC = () => {
           </div>
         </Collapsible>
 
-        <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-sm border px-4 py-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Productos</h2>
-            <span className="text-sm text-gray-500">
-              {formData.products?.length || 0} productos
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                {formData.products?.length || 0} productos • {(formData.products || []).reduce((sum, p) => sum + p.quantity, 0)} items
+              </span>
+            </div>
+            <span className="font-semibold text-blue-600">
+              ${(formData.products || []).reduce((sum, p) => {
+                const product = products.find(prod => prod.id === p.productId);
+                return sum + ((product?.purchasePrice || 0) * p.quantity);
+              }, 0).toFixed(2)}
             </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Buscar productos..."
+              className="w-full pl-9"
+              onChange={(e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                setFilteredProducts(
+                  products.filter(p => p.name.toLowerCase().includes(searchTerm))
+                );
+              }}
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
-            {products.map(item => {
+            {filteredProducts.map(item => {
               const existingItem = formData.products?.find(p => p.productId === item.id);
 
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 p-3 bg-white rounded-lg border ${
-                    existingItem ? 'border-primary ring-1 ring-primary' : ''
+                  className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
+                    existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
                   }`}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).tagName === 'INPUT') {
+                      return;
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    if (existingItem) {
+                      handleRemoveProduct(
+                        formData.products?.findIndex(p => p.productId === item.id) || 0
+                      );
+                    } else {
+                      setSelectedProduct(item.id);
+                      setQuantity(1);
+                      handleAddProduct();
+                    }
+                  }}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={existingItem !== undefined}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedProduct(item.id);
-                          setQuantity(1);
-                          handleAddProduct();
-                        } else {
-                          handleRemoveProduct(
-                            formData.products?.findIndex(p => p.productId === item.id) || 0
-                          );
-                        }
-                      }}
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{item.name}</div>
+                  <div className="p-4">
+                    <span className="absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg bg-purple-500">
+                      P
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={existingItem !== undefined}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedProduct(item.id);
+                            setQuantity(1);
+                            handleAddProduct();
+                          } else {
+                            handleRemoveProduct(
+                              formData.products?.findIndex(p => p.productId === item.id) || 0
+                            );
+                          }
+                        }}
+                        className="h-5 w-5"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-base">{item.name}</span>
+                        </div>
+                      </div>
                     </div>
                     {existingItem && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          className="h-8 w-20 text-center"
-                          value={existingItem.quantity}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            if (value > 0) {
+                      <div className="mt-3">
+                        <div className="ml-8 space-y-2">
+                          <QuantityInput
+                            value={existingItem.quantity}
+                            unit={units.find(u => u.id === item.purchaseUnitId)}
+                            onQuantityChange={(value) => {
                               const updatedProducts = [...(formData.products || [])];
                               const index = updatedProducts.findIndex(p => p.productId === item.id);
                               if (index >= 0) {
@@ -302,12 +367,21 @@ export const MobilePurchaseForm: React.FC = () => {
                                   products: updatedProducts
                                 }));
                               }
-                            }
-                          }}
-                        />
-                        <span className="text-sm text-gray-500">
-                          {units.find(u => u.id === item.purchaseUnitId)?.symbol}
-                        </span>
+                            }}
+                          />
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Costo unitario:</span>
+                            <span className="font-medium">
+                              ${(item.purchasePrice || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Total:</span>
+                            <span className="font-semibold text-blue-600">
+                              ${((item.purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

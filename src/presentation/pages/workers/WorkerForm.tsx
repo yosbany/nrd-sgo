@@ -36,6 +36,11 @@ export function WorkerForm() {
       },
     },
     {
+      name: 'phone',
+      label: 'Teléfono',
+      type: 'text' as const,
+    },
+    {
       name: 'hireDate',
       label: 'Fecha de Contratación',
       type: 'date' as const,

@@ -1,88 +1,64 @@
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Action, Permission, UserRole } from '../interfaces/auth.interface';
+import { User, UserRole } from '../interfaces/auth.interface';
+import { Permission, Action } from '../interfaces/auth.interface';
 
-export class AuthGuard {
-  private static instance: AuthGuard;
-  private authService: AuthService;
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
-  private constructor() {
-    this.authService = new AuthService();
-  }
+  private readonly roles: Record<UserRole, number> = {
+    admin: 3,
+    manager: 2,
+    user: 1
+  };
 
-  static getInstance(): AuthGuard {
-    if (!AuthGuard.instance) {
-      AuthGuard.instance = new AuthGuard();
+  async canActivate(
+    route: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot
+  ): Promise<boolean> {
+    const user = await this.authService.getCurrentUser();
+    
+    if (!user) {
+      this.router.navigate(['/login']);
+      return false;
     }
-    return AuthGuard.instance;
-  }
 
-  isAuthenticated(): boolean {
-    return !!this.authService.getCurrentUser();
-  }
+    const requiredRole = route.data['role'] as UserRole;
+    const requiredPermission = route.data['permission'] as Permission;
 
-  hasRole(requiredRole: string): boolean {
-    const user = this.authService.getCurrentUser();
-    if (!user) return false;
-
-    const roles: Record<UserRole, number> = {
-      admin: 4,
-      manager: 3,
-      worker: 2,
-      viewer: 1
-    };
-
-    const userRoleLevel = roles[user.role] || 0;
-    const requiredRoleLevel = roles[requiredRole as UserRole] || 0;
-
-    return userRoleLevel >= requiredRoleLevel;
-  }
-
-  hasPermission(resource: string, action: Action): boolean {
-    const user = this.authService.getCurrentUser();
-    if (!user) return false;
-
-    // Admins have all permissions
-    if (user.role === 'admin') return true;
-
-    // Check specific permissions
-    return user.permissions.some(permission => 
-      (permission.resource === resource || permission.resource === '*') && 
-      permission.actions.includes(action)
-    );
-  }
-
-  hasPermissions(requiredPermissions: Permission[]): boolean {
-    return requiredPermissions.every(permission =>
-      permission.actions.every(action =>
-        this.hasPermission(permission.resource, action)
-      )
-    );
-  }
-
-  requireAuthentication(): void {
-    if (!this.isAuthenticated()) {
-      throw new Error('Authentication required');
+    if (requiredRole) {
+      const userRoleLevel = this.roles[user.role as UserRole] || 0;
+      const requiredRoleLevel = this.roles[requiredRole];
+      
+      if (userRoleLevel < requiredRoleLevel) {
+        this.router.navigate(['/unauthorized']);
+        return false;
+      }
     }
-  }
 
-  requireRole(role: string): void {
-    this.requireAuthentication();
-    if (!this.hasRole(role)) {
-      throw new Error(`Required role: ${role}`);
-    }
-  }
+    if (requiredPermission) {
+      if (user.role === 'admin') return true;
+      
+      const hasPermission = user.permissions?.some(permission =>
+        permission.resource === requiredPermission.resource &&
+        permission.actions?.every(action =>
+          requiredPermission.actions.includes(action)
+        )
+      );
 
-  requirePermission(resource: string, action: Action): void {
-    this.requireAuthentication();
-    if (!this.hasPermission(resource, action)) {
-      throw new Error(`Required permission: ${action} ${resource}`);
+      if (!hasPermission) {
+        this.router.navigate(['/unauthorized']);
+        return false;
+      }
     }
-  }
 
-  requirePermissions(permissions: Permission[]): void {
-    this.requireAuthentication();
-    if (!this.hasPermissions(permissions)) {
-      throw new Error('Insufficient permissions');
-    }
+    return true;
   }
 } 

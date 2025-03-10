@@ -16,23 +16,30 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Eye, Pencil, Trash2, MessageCircle } from 'lucide-react';
 import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderActions } from '@/presentation/components/OrderActions';
+import { ProductServiceImpl } from '@/domain/services/product.service.impl';
+import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 
 export const MobileOrders: React.FC = () => {
   const [orders, setOrders] = React.useState<CustomerOrder[]>([]);
-  const [customers, setCustomers] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [customers, setCustomers] = React.useState<Array<{ id: string; name: string; phone?: string }>>([]);
+  const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [recipes, setRecipes] = React.useState<Array<{ id: string; name: string }>>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const navigate = useNavigate();
   const orderService = new CustomerOrderServiceImpl();
 
   React.useEffect(() => {
-    loadOrders();
+    loadData();
   }, []);
 
-  const loadOrders = async () => {
+  const loadData = async () => {
     try {
-      const [ordersData, customersData] = await Promise.all([
+      const [ordersData, customersData, productsData, recipesData] = await Promise.all([
         orderService.findAll(),
-        new CustomerServiceImpl().findAll()
+        new CustomerServiceImpl().findAll(),
+        new ProductServiceImpl().findAll(),
+        new RecipeServiceImpl().findAll()
       ]);
       
       // Ordenar por fecha de más reciente a más antigua
@@ -44,8 +51,10 @@ export const MobileOrders: React.FC = () => {
       
       setOrders(sortedOrders);
       setCustomers(customersData);
+      setProducts(productsData);
+      setRecipes(recipesData);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -163,7 +172,7 @@ export const MobileOrders: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-medium">Orden #{getShortId(order.id)}</span>
+                          <span className="font-medium">Pedido #{getShortId(order.id)}</span>
                           <span className="text-sm text-muted-foreground">
                             {formatDate(order.orderDate)}
                           </span>
@@ -193,51 +202,27 @@ export const MobileOrders: React.FC = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Pedido #{getShortId(order.id)}</DialogTitle>
+                  <DialogTitle>
+                    <div className="flex flex-col gap-1">
+                      <span>Pedido #{getShortId(order.id)}</span>
+                      <span className="text-sm font-normal text-gray-500">
+                        {formatDate(order.orderDate)}
+                      </span>
+                    </div>
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('view', order)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    Ver Detalles
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('edit', order)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      const text = `*Pedido #${getShortId(order.id)}*\n` +
-                        `Fecha: ${formatDate(order.orderDate)}\n` +
-                        `Estado: ${getStatusLabel(order.status)}\n` +
-                        `Cliente: ${getCustomerName(order.customerId)}\n` +
-                        `Productos: ${order.products?.length || 0}\n` +
-                        `Recetas: ${order.recipes?.length || 0}`;
-                      
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                    }}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Enviar por WhatsApp
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('delete', order)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar
-                  </Button>
-                </div>
+                <OrderActions
+                  onView={() => handleAction('view', order)}
+                  onEdit={() => handleAction('edit', order)}
+                  onDelete={() => handleAction('delete', order)}
+                  onShare={() => {}}
+                  order={order}
+                  type="customer"
+                  customerName={getCustomerName(order.customerId)}
+                  customerPhone={customers.find(c => c.id === order.customerId)?.phone}
+                  products={products}
+                  recipes={recipes}
+                />
               </DialogContent>
             </Dialog>
           ))}

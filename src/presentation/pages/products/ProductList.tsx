@@ -12,7 +12,7 @@ export function ProductList() {
     {
       header: 'Precio de Venta',
       accessor: 'salePrice' as keyof Product,
-      render: (item: Product) => `$${item.salePrice.toFixed(2)}`,
+      render: (item: Product) => item.salePrice ? `$${item.salePrice.toFixed(2)}` : 'N/A',
     },
     {
       header: 'Estado',

@@ -17,23 +17,27 @@ import { es } from 'date-fns/locale';
 import { Plus, Eye, Pencil, Trash2, MessageCircle } from 'lucide-react';
 import { OrderStatus } from '@/domain/models/base.entity';
 import { Supplier } from '@/domain/models/supplier.model';
+import { OrderActions } from '@/presentation/components/OrderActions';
+import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 
 export const MobilePurchases: React.FC = () => {
   const [orders, setOrders] = React.useState<PurchaseOrder[]>([]);
-  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = React.useState<Array<Supplier & { phone?: string }>>([]);
+  const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const navigate = useNavigate();
   const orderService = new PurchaseOrderServiceImpl();
 
   React.useEffect(() => {
-    loadOrders();
+    loadData();
   }, []);
 
-  const loadOrders = async () => {
+  const loadData = async () => {
     try {
-      const [ordersData, suppliersData] = await Promise.all([
+      const [ordersData, suppliersData, productsData] = await Promise.all([
         orderService.findAll(),
-        new SupplierServiceImpl().findAll()
+        new SupplierServiceImpl().findAll(),
+        new ProductServiceImpl().findAll()
       ]);
       
       // Ordenar por fecha de más reciente a más antigua
@@ -43,8 +47,9 @@ export const MobilePurchases: React.FC = () => {
       
       setOrders(sortedOrders);
       setSuppliers(suppliersData);
+      setProducts(productsData);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +150,7 @@ export const MobilePurchases: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-medium">Orden #{getShortId(order.id)}</span>
+                          <span className="font-medium">Compra #{getShortId(order.id)}</span>
                           <span className="text-sm text-muted-foreground">
                             {formatDate(order.orderDate)}
                           </span>
@@ -175,51 +180,26 @@ export const MobilePurchases: React.FC = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Orden #{getShortId(order.id)}</DialogTitle>
+                  <DialogTitle>
+                    <div className="flex flex-col gap-1">
+                      <span>Compra #{getShortId(order.id)}</span>
+                      <span className="text-sm font-normal text-gray-500">
+                        {formatDate(order.orderDate)}
+                      </span>
+                    </div>
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('view', order)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    Ver Detalles
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('edit', order)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      const text = `*Orden de Compra #${getShortId(order.id)}*\n` +
-                        `Fecha: ${formatDate(order.orderDate)}\n` +
-                        `Estado: ${getStatusLabel(order.status)}\n` +
-                        `Proveedor: ${getSupplierName(order.supplierId)}\n` +
-                        `Productos: ${order.products?.length || 0}\n` +
-                        `Total: ${order.totalItems || 0}`;
-                      
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                    }}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Enviar por WhatsApp
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('delete', order)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar
-                  </Button>
-                </div>
+                <OrderActions
+                  onView={() => handleAction('view', order)}
+                  onEdit={() => handleAction('edit', order)}
+                  onDelete={() => handleAction('delete', order)}
+                  onShare={() => {}}
+                  order={order}
+                  type="purchase"
+                  supplierName={getSupplierName(order.supplierId)}
+                  supplierPhone={suppliers.find(s => s.id === order.supplierId)?.phone}
+                  products={products}
+                />
               </DialogContent>
             </Dialog>
           ))}

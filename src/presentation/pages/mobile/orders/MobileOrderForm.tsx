@@ -22,6 +22,72 @@ import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 
+interface QuantityInputProps {
+  value: number;
+  unit: { id: string; symbol: string; name: string } | undefined;
+  onQuantityChange: (value: number) => void;
+  onClick?: (e: React.MouseEvent) => void;
+}
+
+const QuantityInput: React.FC<QuantityInputProps> = ({ value, unit, onQuantityChange, onClick }) => {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  return isEditing ? (
+    <div className="flex items-center bg-transparent">
+      <Input
+        ref={inputRef}
+        type="number"
+        min="1"
+        className="h-10 w-20 text-left pl-0 border-0 text-lg font-bold text-blue-600 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+        defaultValue=""
+        onBlur={(e) => {
+          const newValue = Number(e.target.value);
+          if (newValue > 0) {
+            onQuantityChange(newValue);
+          }
+          setIsEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+          }
+          if (e.key === 'Escape') {
+            setIsEditing(false);
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <span className="text-base font-semibold text-gray-800 italic">
+        {unit?.name || unit?.symbol}
+      </span>
+    </div>
+  ) : (
+    <button
+      type="button"
+      className="flex items-center gap-2 text-left"
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsEditing(true);
+        onClick?.(e);
+      }}
+    >
+      <span className="text-lg font-bold text-blue-600">
+        {value}
+      </span>
+      <span className="text-base font-semibold text-gray-800 italic">
+        {unit?.name || unit?.symbol}
+      </span>
+    </button>
+  );
+};
+
 export const MobileOrderForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -31,7 +97,7 @@ export const MobileOrderForm: React.FC = () => {
   const [customers, setCustomers] = React.useState<Array<{ id: string; name: string }>>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
-  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string }>>([]);
+  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string; name: string }>>([]);
   const [selectedProduct, setSelectedProduct] = React.useState<string>('');
   const [selectedRecipe, setSelectedRecipe] = React.useState<string>('');
   const [productQuantity, setProductQuantity] = React.useState<number>(1);
@@ -43,6 +109,7 @@ export const MobileOrderForm: React.FC = () => {
     products: [],
     recipes: []
   });
+  const [filteredItems, setFilteredItems] = React.useState<Array<(Product | Recipe) & { type: 'product' | 'recipe' }>>([]);
 
   React.useEffect(() => {
     loadInitialData();
@@ -61,6 +128,11 @@ export const MobileOrderForm: React.FC = () => {
       setProducts(productsData);
       setRecipes(recipesData);
       setUnits(unitsData);
+
+      setFilteredItems([
+        ...recipesData.map(item => ({ ...item, type: 'recipe' as const })),
+        ...productsData.map(item => ({ ...item, type: 'product' as const }))
+      ]);
 
       if (id) {
         const orderService = new CustomerOrderServiceImpl();
@@ -84,7 +156,6 @@ export const MobileOrderForm: React.FC = () => {
 
   const handleAddProduct = () => {
     if (!selectedProduct) {
-      toast.error('Debe seleccionar un producto');
       return;
     }
 
@@ -121,7 +192,6 @@ export const MobileOrderForm: React.FC = () => {
 
   const handleAddRecipe = () => {
     if (!selectedRecipe) {
-      toast.error('Debe seleccionar una receta');
       return;
     }
 
@@ -220,7 +290,7 @@ export const MobileOrderForm: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32">
-      <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-lg mx-auto">
         <Collapsible open={isGeneralOpen} onOpenChange={setIsGeneralOpen}>
           <div className="bg-white rounded-lg shadow-sm border">
             <div 
@@ -228,10 +298,10 @@ export const MobileOrderForm: React.FC = () => {
               onClick={() => setIsGeneralOpen(!isGeneralOpen)}
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Información General</span>
+                <span className="text-sm font-medium">INFORMACIÓN GENERAL</span>
                 {!isGeneralOpen && (
                   <span className="text-xs text-gray-500">
-                    {formData.customerId ? customers.find(c => c.id === formData.customerId)?.name : 'Sin asignar'}
+                    {formData.customerId ? customers.find(c => c.id === formData.customerId)?.name : 'Sin asignar'} • {formData.orderDate ? format(new Date(formData.orderDate), 'dd/MM/yyyy') : ''}
                   </span>
                 )}
               </div>
@@ -248,7 +318,7 @@ export const MobileOrderForm: React.FC = () => {
             <CollapsibleContent>
               <div className="p-4 space-y-4 border-t">
                 <div className="space-y-2">
-                  <Label htmlFor="orderDate" className="text-sm text-gray-600">Fecha del Pedido</Label>
+                  <Label htmlFor="orderDate" className="text-sm text-gray-600">FECHA DEL PEDIDO</Label>
                   <Input
                     id="orderDate"
                     type="date"
@@ -277,7 +347,7 @@ export const MobileOrderForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="customerId" className="text-sm text-gray-600">Cliente</Label>
+                  <Label htmlFor="customerId" className="text-sm text-gray-600">CLIENTE</Label>
                   <select
                     id="customerId"
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
@@ -294,7 +364,7 @@ export const MobileOrderForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm text-gray-600">Estado</Label>
+                  <Label htmlFor="status" className="text-sm text-gray-600">ESTADO</Label>
                   <select
                     id="status"
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
@@ -310,19 +380,70 @@ export const MobileOrderForm: React.FC = () => {
           </div>
         </Collapsible>
 
-        <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-sm border px-4 py-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Productos y Recetas</h2>
-            <span className="text-sm text-gray-500">
-              {(formData.products?.length || 0) + (formData.recipes?.length || 0)} items
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                {formData.products?.length || 0} productos • {formData.recipes?.length || 0} recetas • {[
+                  ...(formData.products || []).map(p => p.quantity),
+                  ...(formData.recipes || []).map(r => r.quantity)
+                ].reduce((sum, current) => sum + current, 0)} items
+              </span>
+            </div>
+            <span className="font-semibold text-blue-600">
+              ${[
+                ...(formData.products || []).map(p => {
+                  const product = products.find(prod => prod.id === p.productId);
+                  return ((product?.purchasePrice || 0) * p.quantity);
+                }),
+                ...(formData.recipes || []).map(r => {
+                  const recipe = recipes.find(rec => rec.id === r.recipeId);
+                  return ((recipe?.cost || 0) * r.quantity);
+                })
+              ].reduce((sum, current) => sum + current, 0).toFixed(2)}
             </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Buscar productos o recetas..."
+              className="w-full pl-9"
+              onChange={(e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredProducts = products.filter(p => 
+                  p.name.toLowerCase().includes(searchTerm)
+                );
+                const filteredRecipes = recipes.filter(r => 
+                  r.name.toLowerCase().includes(searchTerm)
+                );
+                setFilteredItems([
+                  ...filteredRecipes.map(item => ({ ...item, type: 'recipe' as const })),
+                  ...filteredProducts.map(item => ({ ...item, type: 'product' as const }))
+                ]);
+              }}
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
-            {[
-              ...recipes.map(item => ({ ...item, type: 'recipe' as const })),
-              ...products.map(item => ({ ...item, type: 'product' as const }))
-            ].map(item => {
+            {filteredItems.map(item => {
               const isRecipe = item.type === 'recipe';
               const existingItem = isRecipe 
                 ? formData.recipes?.find(r => r.recipeId === item.id)
@@ -331,53 +452,111 @@ export const MobileOrderForm: React.FC = () => {
               return (
                 <div
                   key={`${item.type}-${item.id}`}
-                  className="flex items-center gap-3 p-3 bg-white rounded-lg border"
+                  className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
+                    existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
+                  }`}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).tagName === 'INPUT') {
+                      return;
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    if (existingItem) {
+                      if (isRecipe) {
+                        handleRemoveRecipe(
+                          formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                        );
+                      } else {
+                        handleRemoveProduct(
+                          formData.products?.findIndex(p => p.productId === item.id) || 0
+                        );
+                      }
+                    } else {
+                      if (isRecipe) {
+                        setSelectedRecipe(item.id);
+                        setRecipeQuantity(1);
+                        handleAddRecipe();
+                      } else {
+                        setSelectedProduct(item.id);
+                        setProductQuantity(1);
+                        handleAddProduct();
+                      }
+                    }
+                  }}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={existingItem !== undefined}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          if (isRecipe) {
-                            setSelectedRecipe(item.id);
-                            handleAddRecipe();
+                  <div className="p-4">
+                    <span className={`absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg ${
+                      isRecipe ? 'bg-blue-500' : 'bg-purple-500'
+                    }`}>
+                      {isRecipe ? 'R' : 'P'}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={existingItem !== undefined}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            if (isRecipe) {
+                              setSelectedRecipe(item.id);
+                              setRecipeQuantity(1);
+                              handleAddRecipe();
+                            } else {
+                              setSelectedProduct(item.id);
+                              setProductQuantity(1);
+                              handleAddProduct();
+                            }
                           } else {
-                            setSelectedProduct(item.id);
-                            handleAddProduct();
+                            if (isRecipe) {
+                              handleRemoveRecipe(
+                                formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                              );
+                            } else {
+                              handleRemoveProduct(
+                                formData.products?.findIndex(p => p.productId === item.id) || 0
+                              );
+                            }
                           }
-                        } else {
-                          if (isRecipe) {
-                            handleRemoveRecipe(
-                              formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
-                            );
+                        }}
+                        className="h-5 w-5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (existingItem) {
+                            if (isRecipe) {
+                              handleRemoveRecipe(
+                                formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                              );
+                            } else {
+                              handleRemoveProduct(
+                                formData.products?.findIndex(p => p.productId === item.id) || 0
+                              );
+                            }
                           } else {
-                            handleRemoveProduct(
-                              formData.products?.findIndex(p => p.productId === item.id) || 0
-                            );
+                            if (isRecipe) {
+                              setSelectedRecipe(item.id);
+                              setRecipeQuantity(1);
+                              handleAddRecipe();
+                            } else {
+                              setSelectedProduct(item.id);
+                              setProductQuantity(1);
+                              handleAddProduct();
+                            }
                           }
-                        }
-                      }}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{item.name}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          isRecipe ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'
-                        }`}>
-                          {isRecipe ? 'Receta' : 'Producto'}
-                        </span>
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-base">{item.name}</span>
+                        </div>
                       </div>
                     </div>
                     {existingItem && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          className="h-8 w-20 text-center"
-                          value={existingItem.quantity}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            if (value > 0) {
+                      <div className="mt-3">
+                        <div className="ml-8 space-y-2">
+                          <QuantityInput
+                            value={existingItem.quantity}
+                            unit={isRecipe 
+                              ? units.find(u => u.id === (item as Recipe).yieldUnitId)
+                              : units.find(u => u.id === (item as Product).salesUnitId)}
+                            onQuantityChange={(value) => {
                               if (isRecipe) {
                                 const updatedRecipes = [...(formData.recipes || [])];
                                 const index = updatedRecipes.findIndex(r => r.recipeId === item.id);
@@ -399,14 +578,25 @@ export const MobileOrderForm: React.FC = () => {
                                   }));
                                 }
                               }
-                            }
-                          }}
-                        />
-                        <span className="text-sm text-gray-500">
-                          {isRecipe 
-                            ? units.find(u => u.id === (item as Recipe).yieldUnitId)?.symbol
-                            : units.find(u => u.id === (item as Product).salesUnitId)?.symbol}
-                        </span>
+                            }}
+                          />
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Costo unitario:</span>
+                            <span className="font-medium">
+                              ${isRecipe 
+                                ? (item as Recipe).cost.toFixed(2)
+                                : ((item as Product).purchasePrice || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Total:</span>
+                            <span className="font-semibold text-blue-600">
+                              ${isRecipe 
+                                ? ((item as Recipe).cost * existingItem.quantity).toFixed(2)
+                                : (((item as Product).purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

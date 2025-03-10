@@ -16,43 +16,42 @@ import { es } from 'date-fns/locale';
 import { Plus, Eye, Pencil, Trash2, MessageCircle } from 'lucide-react';
 import { OrderStatus } from '@/domain/models/base.entity';
 import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
+import { OrderActions } from '@/presentation/components/OrderActions';
+import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 
 export const MobileProduction: React.FC = () => {
   const [orders, setOrders] = React.useState<ProductionOrder[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [workers, setWorkers] = React.useState<Array<{ id: string; name: string; phone?: string }>>([]);
+  const [recipes, setRecipes] = React.useState<Array<{ id: string; name: string }>>([]);
   const navigate = useNavigate();
   const orderService = new ProductionOrderServiceImpl();
   const workerService = new WorkerServiceImpl();
 
   React.useEffect(() => {
-    loadOrders();
-    loadWorkers();
+    loadData();
   }, []);
 
-  const loadOrders = async () => {
+  const loadData = async () => {
     try {
-      const data = await orderService.findAll();
+      const [ordersData, workersData, recipesData] = await Promise.all([
+        orderService.findAll(),
+        workerService.findAll(),
+        new RecipeServiceImpl().findAll()
+      ]);
       // Ordenar por fecha de más reciente a más antigua
-      const sortedOrders = data.sort((a, b) => {
+      const sortedOrders = ordersData.sort((a, b) => {
         const dateA = a.orderDate instanceof Date ? a.orderDate : new Date(a.orderDate);
         const dateB = b.orderDate instanceof Date ? b.orderDate : new Date(b.orderDate);
         return dateB.getTime() - dateA.getTime();
       });
       setOrders(sortedOrders);
+      setWorkers(workersData);
+      setRecipes(recipesData);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadWorkers = async () => {
-    try {
-      const data = await workerService.findAll();
-      setWorkers(data);
-    } catch (error) {
-      console.error('Error loading workers:', error);
     }
   };
 
@@ -163,7 +162,7 @@ export const MobileProduction: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-medium">Orden #{order.consecutive || getShortId(order.id)}</span>
+                          <span className="font-medium">Producción #{getShortId(order.id)}</span>
                           <span className="text-sm text-muted-foreground">
                             {formatDate(order.orderDate)}
                           </span>
@@ -197,51 +196,26 @@ export const MobileProduction: React.FC = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Orden #{getShortId(order.id)}</DialogTitle>
+                  <DialogTitle>
+                    <div className="flex flex-col gap-1">
+                      <span>Producción #{getShortId(order.id)}</span>
+                      <span className="text-sm font-normal text-gray-500">
+                        {formatDate(order.orderDate)}
+                      </span>
+                    </div>
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('view', order)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    Ver Detalles
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('edit', order)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      const text = `*Orden de Producción #${order.consecutive || getShortId(order.id)}*\n` +
-                        `Fecha: ${formatDate(order.orderDate)}\n` +
-                        `Estado: ${getStatusLabel(order.status)}\n` +
-                        `Responsable: ${workers.find(w => w.id === order.responsibleWorkerId)?.name || 'No asignado'}\n` +
-                        `Recetas: ${order.recipes?.length || 0}\n` +
-                        `Total: ${order.recipes?.reduce((sum, recipe) => sum + (recipe.quantity || 0), 0) || 0}`;
-                      
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                    }}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Enviar por WhatsApp
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => handleAction('delete', order)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar
-                  </Button>
-                </div>
+                <OrderActions
+                  onView={() => handleAction('view', order)}
+                  onEdit={() => handleAction('edit', order)}
+                  onDelete={() => handleAction('delete', order)}
+                  onShare={() => {}}
+                  order={order}
+                  type="production"
+                  workerName={workers.find(w => w.id === order.responsibleWorkerId)?.name}
+                  workerPhone={workers.find(w => w.id === order.responsibleWorkerId)?.phone}
+                  recipes={recipes}
+                />
               </DialogContent>
             </Dialog>
           ))}

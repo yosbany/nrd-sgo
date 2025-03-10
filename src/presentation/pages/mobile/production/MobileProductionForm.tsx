@@ -19,6 +19,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderStatus } from '@/domain/models/base.entity';
 import { format } from 'date-fns';
+import { QuantityInput } from '@/presentation/components/QuantityInput';
 
 export const MobileProductionForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,8 +29,9 @@ export const MobileProductionForm: React.FC = () => {
   const [isGeneralOpen, setIsGeneralOpen] = React.useState(false);
   const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
-  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string }>>([]);
+  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string; name: string }>>([]);
   const [selectedRecipes, setSelectedRecipes] = React.useState<Set<string>>(new Set());
+  const [filteredRecipes, setFilteredRecipes] = React.useState<Recipe[]>([]);
   const [formData, setFormData] = React.useState<Partial<ProductionOrder>>({
     orderDate: (() => {
       const tomorrow = new Date();
@@ -56,6 +58,7 @@ export const MobileProductionForm: React.FC = () => {
       setWorkers(workersData);
       setRecipes(recipesData);
       setUnits(unitsData);
+      setFilteredRecipes(recipesData);
 
       if (id) {
         const orderService = new ProductionOrderServiceImpl();
@@ -115,6 +118,10 @@ export const MobileProductionForm: React.FC = () => {
   };
 
   const handleRecipeChange = (recipeId: string, quantity: number) => {
+    if (!recipeId) {
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       recipes: [
@@ -124,7 +131,7 @@ export const MobileProductionForm: React.FC = () => {
     }));
   };
 
-  const toggleRecipe = (recipeId: string) => {
+  const toggleRecipe = (recipeId: string, initialQuantity: number = 1) => {
     setSelectedRecipes(prev => {
       const newSet = new Set(prev);
       if (newSet.has(recipeId)) {
@@ -132,6 +139,7 @@ export const MobileProductionForm: React.FC = () => {
         handleRecipeChange(recipeId, 0);
       } else {
         newSet.add(recipeId);
+        handleRecipeChange(recipeId, initialQuantity);
       }
       return newSet;
     });
@@ -147,7 +155,7 @@ export const MobileProductionForm: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32">
-      <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-lg mx-auto">
         <Collapsible open={isGeneralOpen} onOpenChange={setIsGeneralOpen}>
           <div className="bg-white rounded-lg shadow-sm border">
             <div 
@@ -228,50 +236,140 @@ export const MobileProductionForm: React.FC = () => {
           </div>
         </Collapsible>
 
-        <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-sm border px-4 py-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Recetas</h2>
-            <span className="text-sm text-gray-500">
-              {selectedRecipes.size} seleccionadas
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                {selectedRecipes.size} recetas • {(formData.recipes || []).reduce((sum, r) => sum + r.quantity, 0)} items
+              </span>
+            </div>
+            <span className="font-semibold text-blue-600">
+              ${(formData.recipes || []).reduce((sum, r) => {
+                const recipe = recipes.find(rec => rec.id === r.recipeId);
+                return sum + ((recipe?.cost || 0) * r.quantity);
+              }, 0).toFixed(2)}
             </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Buscar recetas..."
+              className="w-full pl-9"
+              onChange={(e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                setFilteredRecipes(
+                  recipes.filter(r => r.name.toLowerCase().includes(searchTerm))
+                );
+              }}
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
           </div>
 
           <div className="grid grid-cols-1 gap-3">
-            {recipes.map(recipe => {
+            {filteredRecipes.map(recipe => {
               const isSelected = selectedRecipes.has(recipe.id);
-              const quantity = formData.recipes?.find(r => r.recipeId === recipe.id)?.quantity || '';
+              const existingItem = formData.recipes?.find(r => r.recipeId === recipe.id);
 
               return (
                 <div
                   key={recipe.id}
-                  className={`flex items-center gap-3 p-3 bg-white rounded-lg border ${
-                    isSelected ? 'border-primary' : 'border-gray-200'
+                  className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
+                    isSelected ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
                   }`}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).tagName === 'INPUT') {
+                      return;
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    if (isSelected) {
+                      handleRecipeChange(recipe.id, 0);
+                      setSelectedRecipes(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(recipe.id);
+                        return newSet;
+                      });
+                    } else {
+                      toggleRecipe(recipe.id, 1);
+                    }
+                  }}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleRecipe(recipe.id)}
-                    />
-                    <div 
-                      className="flex-1 font-medium text-sm cursor-pointer"
-                      onClick={() => toggleRecipe(recipe.id)}
-                    >
-                      {recipe.name}
+                  <div className="p-4">
+                    <span className="absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg bg-blue-500">
+                      R
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            toggleRecipe(recipe.id, 1);
+                          } else {
+                            handleRecipeChange(recipe.id, 0);
+                            setSelectedRecipes(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(recipe.id);
+                              return newSet;
+                            });
+                          }
+                        }}
+                        className="h-5 w-5"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-base">{recipe.name}</span>
+                        </div>
+                      </div>
                     </div>
-                    {isSelected && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          className="w-20 h-9 text-sm text-center"
-                          placeholder="Cant."
-                          value={quantity}
-                          onChange={(e) => handleRecipeChange(recipe.id, parseInt(e.target.value) || 0)}
-                        />
-                        <span className="text-sm text-gray-500">
-                          {units.find(u => u.id === recipe.yieldUnitId)?.symbol}
-                        </span>
+                    {existingItem && (
+                      <div className="mt-3">
+                        <div className="ml-8 space-y-2">
+                          <QuantityInput
+                            value={existingItem.quantity}
+                            unit={units.find(u => u.id === recipe.yieldUnitId)}
+                            onQuantityChange={(value) => {
+                              const updatedRecipes = [...(formData.recipes || [])];
+                              const index = updatedRecipes.findIndex(r => r.recipeId === recipe.id);
+                              if (index >= 0) {
+                                updatedRecipes[index].quantity = value;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  recipes: updatedRecipes
+                                }));
+                              }
+                            }}
+                          />
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Costo unitario:</span>
+                            <span className="font-medium">
+                              ${recipe.cost.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Total:</span>
+                            <span className="font-semibold text-blue-600">
+                              ${(recipe.cost * existingItem.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

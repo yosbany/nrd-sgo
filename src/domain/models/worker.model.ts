@@ -26,6 +26,7 @@ export interface Payment {
 export interface Worker extends BaseEntity {
   name: string;
   primaryRoleId: string;
+  phone?: string;
   hireDate: Date;
   monthlySalary: number;
   leaveBalance: number;

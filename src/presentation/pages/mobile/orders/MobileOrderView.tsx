@@ -125,44 +125,45 @@ export const MobileOrderView: React.FC = () => {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Información General</CardTitle>
+    <div className="p-2 space-y-3 max-w-full">
+      <Card className="w-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Información General</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Estado</span>
-            <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+            <span className="text-sm text-muted-foreground">Estado</span>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
               {getStatusLabel(order.status)}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Fecha del Pedido</span>
-            <span>{formatDate(order.orderDate)}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Fecha del Pedido</span>
+            <span className="text-sm">{formatDate(order.orderDate)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Cliente</span>
-            <span>{getCustomerName(order.customerId)}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Cliente</span>
+            <span className="text-sm text-right">{getCustomerName(order.customerId)}</span>
           </div>
         </CardContent>
       </Card>
 
       {order.products && order.products.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos</CardTitle>
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Productos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {order.products.map((product, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
-                  <div className="space-y-1">
-                    <div className="font-medium">
+                <div key={index} className="p-3 rounded-lg bg-muted/30">
+                  <div className="space-y-2">
+                    <div className="font-medium text-base break-words">
                       {getProductName(product.productId)}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Cantidad: {product.quantity}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Cantidad:</span>
+                      <span className="text-sm font-medium">{product.quantity}</span>
                     </div>
                   </div>
                 </div>
@@ -173,20 +174,21 @@ export const MobileOrderView: React.FC = () => {
       )}
 
       {order.recipes && order.recipes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recetas</CardTitle>
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Recetas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {order.recipes.map((recipe, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
-                  <div className="space-y-1">
-                    <div className="font-medium">
+                <div key={index} className="p-3 rounded-lg bg-muted/30">
+                  <div className="space-y-2">
+                    <div className="font-medium text-base break-words">
                       {getRecipeName(recipe.recipeId)}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Cantidad: {recipe.quantity}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Cantidad:</span>
+                      <span className="text-sm font-medium">{recipe.quantity}</span>
                     </div>
                   </div>
                 </div>
