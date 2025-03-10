@@ -1,149 +1,168 @@
-import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle } from 'react-feather';
-import { AuthService } from '../../../auth/services/auth.service';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LogIn, Sun, Moon, User, Lock } from 'lucide-react';
+import { Button } from '@/presentation/components/ui/button';
+import { Input } from '@/presentation/components/ui/input';
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/presentation/components/ui/card';
+import { AuthService } from '@/auth/services/auth.service';
+import { toast } from 'sonner';
+import logo from '@/assets/logo.jpg';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const authService = new AuthService();
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
 
-  const handleSubmit = async (e: FormEvent) => {
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
 
     try {
-      await authService.login(email, password);
-      navigate('/');
+      const authService = new AuthService();
+      await authService.login(formData.email, formData.password);
+      
+      console.log('Login successful');
+      const from = location.state?.from || '/dashboard';
+      navigate(from, { replace: true });
     } catch (error) {
-      setError('Credenciales inválidas. Por favor, intente nuevamente.');
+      console.error('Login error:', error);
+      toast.error('Error al iniciar sesión. Por favor, verifique sus credenciales.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 z-0 opacity-40 dark:opacity-20">
-        <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-blue-400 to-transparent blur-3xl" />
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-indigo-400 to-transparent blur-3xl" />
+    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-[40rem] left-1/2 -z-10 transform -translate-x-1/2">
+          <div className="aspect-[1200/800] w-[80rem] bg-gradient-to-tr from-primary/20 to-primary-foreground/20 opacity-30 blur-3xl" />
+        </div>
       </div>
 
-      {/* Login container */}
-      <div className="relative w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 mb-4 animate-pulse-slow">
-            <span className="text-3xl font-bold text-white">S</span>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">SGO App</h2>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">Sistema de Gestión Operativa</p>
-        </div>
+      {/* Theme toggle */}
+      <div className="absolute top-4 right-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="rounded-full"
+        >
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
+      </div>
 
-        {/* Login form */}
-        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl shadow-glass-lg rounded-2xl p-8 space-y-6 animate-fadeIn">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white text-center">
-            Iniciar Sesión
-          </h1>
-
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-start space-x-2">
-              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-              <span className="text-sm">{error}</span>
+      {/* Login form */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <Card className="w-full max-w-[90%] sm:max-w-md backdrop-blur-sm bg-card/80 shadow-xl">
+          <CardHeader className="space-y-4 text-center pb-6">
+            <div className="flex justify-center">
+              <img 
+                src={logo} 
+                alt="Logo" 
+                className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg shadow-lg object-cover" 
+              />
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              {/* Email field */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Correo Electrónico
-                </label>
+            <div className="space-y-2">
+              <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+                Sistema de Gestión Operativa
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base">
+                Inicie sesión para continuar
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <User className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <input
+                  <Input
                     id="email"
+                    name="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
                     required
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/50 dark:bg-gray-900/50 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                    placeholder="usuario@empresa.com"
+                    className="pl-10 h-11"
+                    placeholder="usuario@ejemplo.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={isLoading}
                   />
                 </div>
-              </div>
-
-              {/* Password field */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Contraseña
-                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <input
+                  <Input
                     id="password"
+                    name="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                     required
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/50 dark:bg-gray-900/50 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                    className="pl-10 h-11"
                     placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Remember me & Forgot password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-colors duration-200"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Recordarme
-                </label>
-              </div>
-              <button type="button" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors duration-200">
-                ¿Olvidó su contraseña?
-              </button>
-            </div>
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                    Iniciando sesión...
+                  </div>
+                ) : (
+                  <>
+                    <LogIn className="h-5 w-5 mr-2" />
+                    Iniciar sesión
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                'Iniciar Sesión'
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          ¿No tiene una cuenta?{' '}
-          <button className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors duration-200">
-            Contacte al administrador
-          </button>
+      {/* Footer */}
+      <div className="py-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} Sistema de Gestión Operativa. Todos los derechos reservados.
         </p>
       </div>
     </div>

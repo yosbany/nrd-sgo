@@ -1,150 +1,128 @@
-import { useState, FormEvent } from 'react';
-import { Incident, CreateIncidentData, UpdateIncidentData } from '../../../data/interfaces/entities.interface';
-import { FormGroup, Input, Select, Textarea } from '../../components/common/Form';
-import Button from '../../components/common/Button';
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { GenericForm } from '../../components/common/GenericForm';
+import { Incident, IncidentStatus, IncidentType } from '../../../domain/models/incident.model';
+import { IncidentServiceImpl } from '../../../domain/services/incident.service.impl';
+import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
+import { RoleServiceImpl } from '@/domain/services/role.service.impl';
+import { ProductServiceImpl } from '@/domain/services/product.service.impl';
+import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 
-interface IncidentFormProps {
-  incident?: Incident;
-  onSubmit: (incident: CreateIncidentData | UpdateIncidentData) => Promise<void>;
-  onCancel: () => void;
-  isLoading?: boolean;
-}
+export function IncidentForm() {
+  const { id } = useParams<{ id: string }>();
+  const [incident, setIncident] = React.useState<Partial<Incident>>({});
+  const [incidentType, setIncidentType] = React.useState<IncidentType | ''>('');
+  const incidentService = new IncidentServiceImpl();
 
-const IncidentForm = ({
-  incident,
-  onSubmit,
-  onCancel,
-  isLoading = false
-}: IncidentFormProps) => {
-  const [formData, setFormData] = useState<CreateIncidentData | UpdateIncidentData>(
-    incident ? {
-      type: incident.type,
-      description: incident.description,
-      classification: incident.classification,
-      status: incident.status,
-      reportDate: incident.reportDate,
-      location: incident.location,
-      affectedArea: incident.affectedArea,
-      immediateActions: incident.immediateActions,
-      reporterId: incident.reporterId,
-      reporterName: incident.reporterName
-    } : {
-      type: 'safety',
-      description: '',
-      classification: 1,
-      status: 'pending',
-      reportDate: new Date().toISOString(),
-      location: '',
-      affectedArea: '',
-      immediateActions: '',
-      reporterId: '',
-      reporterName: ''
+  React.useEffect(() => {
+    if (id) {
+      incidentService.findById(id).then(data => {
+        if (data) {
+          setIncident(data);
+          setIncidentType(data.type);
+        }
+      });
     }
-  );
+  }, [id]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    await onSubmit(formData);
+  const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const value = e.target.value as IncidentType | '';
+    setIncidentType(value);
   };
 
+  const baseFields = [
+    {
+      name: 'type',
+      label: 'Tipo',
+      type: 'select' as const,
+      required: true,
+      options: [
+        { value: IncidentType.PRODUCTION, label: 'Producción' },
+        { value: IncidentType.TASK, label: 'Tarea' },
+        { value: IncidentType.INVENTORY, label: 'Inventario' },
+      ],
+      onChange: handleTypeChange,
+    },
+    {
+      name: 'reportedByWorkerId',
+      label: 'Reportado Por',
+      type: 'select' as const,
+      required: true,
+      relatedService: {
+        service: new WorkerServiceImpl(),
+        labelField: 'name',
+      },
+    },
+    {
+      name: 'description',
+      label: 'Descripción',
+      type: 'textarea' as const,
+      required: true,
+    },
+    {
+      name: 'status',
+      label: 'Estado',
+      type: 'select' as const,
+      required: true,
+      options: [
+        { value: IncidentStatus.PENDING, label: 'Pendiente' },
+        { value: IncidentStatus.RESOLVED, label: 'Resuelto' },
+      ],
+    },
+  ];
+
+  const getTypeSpecificField = () => {
+    switch (incidentType) {
+      case IncidentType.PRODUCTION:
+        return {
+          name: 'recipeId',
+          label: 'Receta',
+          type: 'select' as const,
+          required: true,
+          relatedService: {
+            service: new RecipeServiceImpl(),
+            labelField: 'name',
+          },
+        };
+      case IncidentType.TASK:
+        return {
+          name: 'taskId',
+          label: 'Tarea',
+          type: 'select' as const,
+          required: true,
+          relatedService: {
+            service: new RoleServiceImpl(),
+            labelField: 'name',
+          },
+        };
+      case IncidentType.INVENTORY:
+        return {
+          name: 'productId',
+          label: 'Producto',
+          type: 'select' as const,
+          required: true,
+          relatedService: {
+            service: new ProductServiceImpl(),
+            labelField: 'name',
+          },
+        };
+      default:
+        return null;
+    }
+  };
+
+  const typeSpecificField = getTypeSpecificField();
+  const fields = typeSpecificField 
+    ? [...baseFields, typeSpecificField]
+    : baseFields;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <FormGroup>
-        <Select
-          label="Tipo de Incidente"
-          value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value as 'safety' | 'maintenance' | 'quality' })}
-          required
-          options={[
-            { value: 'safety', label: 'Seguridad' },
-            { value: 'maintenance', label: 'Mantenimiento' },
-            { value: 'quality', label: 'Calidad' }
-          ]}
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <Select
-          label="Clasificación"
-          value={formData.classification}
-          onChange={(e) => setFormData({ ...formData, classification: Number(e.target.value) as 1 | 2 | 3 })}
-          required
-          options={[
-            { value: '1', label: 'Nivel 1' },
-            { value: '2', label: 'Nivel 2' },
-            { value: '3', label: 'Nivel 3' }
-          ]}
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <Input
-          label="Ubicación"
-          value={formData.location}
-          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-          required
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <Input
-          label="Área Afectada"
-          value={formData.affectedArea}
-          onChange={(e) => setFormData({ ...formData, affectedArea: e.target.value })}
-          required
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <Textarea
-          label="Descripción"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          required
-          rows={4}
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <Textarea
-          label="Acciones Inmediatas"
-          value={formData.immediateActions || ''}
-          onChange={(e) => setFormData({ ...formData, immediateActions: e.target.value })}
-          rows={4}
-        />
-      </FormGroup>
-
-      {incident && (
-        <FormGroup>
-          <Select
-            label="Estado"
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pending' | 'in_progress' | 'resolved' })}
-            required
-            options={[
-              { value: 'pending', label: 'Pendiente' },
-              { value: 'in_progress', label: 'En Progreso' },
-              { value: 'resolved', label: 'Resuelto' }
-            ]}
-          />
-        </FormGroup>
-      )}
-
-      <div className="flex justify-end space-x-4">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
-          Cancelar
-        </Button>
-        <Button type="submit" isLoading={isLoading}>
-          {incident ? 'Actualizar' : 'Crear'} Incidente
-        </Button>
-      </div>
-    </form>
+    <GenericForm<Incident>
+      title={id ? 'Editar Incidente' : 'Nuevo Incidente'}
+      fields={fields}
+      initialValues={incident}
+      service={incidentService}
+      backPath="/incidents"
+    />
   );
-};
-
-export default IncidentForm; 
+} 

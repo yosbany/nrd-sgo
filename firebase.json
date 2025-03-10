@@ -1,0 +1,15 @@
+{
+  "database": {
+    "rules": {
+      "customer-orders": {
+        ".indexOn": ["status", "customerId", "orderDate"]
+      },
+      "production-orders": {
+        ".indexOn": ["status", "responsibleWorkerId", "productionDate"]
+      },
+      "purchase-orders": {
+        ".indexOn": ["status", "supplierId", "orderDate"]
+      }
+    }
+  }
+} 

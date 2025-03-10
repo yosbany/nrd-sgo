@@ -1,8 +1,8 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
 interface State {
@@ -13,7 +13,7 @@ interface State {
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -21,31 +21,35 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('Error caught by error boundary:', error, errorInfo);
   }
 
   public render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-          <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Oops! Algo salió mal
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div className="flex flex-col items-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+              <h2 className="text-center text-3xl font-extrabold text-gray-900">
+                Algo salió mal
               </h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {this.state.error?.message || 'Se ha producido un error inesperado.'}
+              <p className="mt-2 text-center text-sm text-gray-600">
+                Ha ocurrido un error inesperado. Por favor, intente recargar la página.
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Recargar la página
+                Recargar página
               </button>
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-4 bg-red-50 rounded-md">
+                  <p className="text-sm text-red-700">
+                    Error: {this.state.error?.message}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

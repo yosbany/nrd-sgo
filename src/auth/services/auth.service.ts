@@ -2,7 +2,10 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  User
+  User,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 
@@ -34,9 +37,20 @@ export class AuthService {
     AuthService.instance = this;
   }
 
-  async login(email: string, password: string): Promise<void> {
+  async login(email: string, password: string, rememberMe: boolean = false): Promise<void> {
     try {
+      // Set persistence based on rememberMe flag
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
+      // Attempt login
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // Store the rememberMe preference
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberMe');
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -46,6 +60,7 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       await signOut(auth);
+      localStorage.removeItem('rememberMe');
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
@@ -63,5 +78,9 @@ export class AuthService {
 
   async waitForAuthReady(): Promise<void> {
     return this.authStateReady;
+  }
+
+  wasRemembered(): boolean {
+    return localStorage.getItem('rememberMe') === 'true';
   }
 } 
