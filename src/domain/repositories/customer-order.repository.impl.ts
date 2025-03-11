@@ -5,6 +5,16 @@ import { BaseRepositoryImpl } from './base.repository.impl';
 import { OrderStatus } from '../models/base.entity';
 
 export class CustomerOrderRepositoryImpl extends BaseRepositoryImpl<CustomerOrder> implements ICustomerOrderRepository {
+  protected modelProperties: (keyof CustomerOrder)[] = [
+    'orderDate',
+    'status',
+    'customerId',
+    'products',
+    'recipes',
+    'totalItems',
+    'totalProducts'
+  ];
+
   constructor(db: Database) {
     super(db, 'customer-orders');
   }

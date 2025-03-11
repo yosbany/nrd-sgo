@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
+import { DatePicker } from '@/presentation/components/ui/date-picker';
 
 interface QuantityInputProps {
   value: number;
@@ -257,11 +258,24 @@ export const MobileOrderForm: React.FC = () => {
 
     try {
       const orderService = new CustomerOrderServiceImpl();
+      const products = formData.products || [];
+      const recipes = formData.recipes || [];
+      
+      const totalItems = products.reduce((sum, p) => sum + p.quantity, 0) +
+        recipes.reduce((sum, r) => sum + r.quantity, 0);
+      
+      const totalProducts = products.length + recipes.length;
+
       const orderToSave = {
-        ...formData,
+        customerId: formData.customerId,
         orderDate: formData.orderDate instanceof Date 
           ? formData.orderDate 
-          : new Date(formData.orderDate || new Date())
+          : new Date(formData.orderDate || new Date()),
+        status: formData.status,
+        products: products,
+        recipes: recipes,
+        totalItems,
+        totalProducts
       };
 
       if (id) {
@@ -278,6 +292,18 @@ export const MobileOrderForm: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const getDateValue = () => {
+    if (formData.orderDate instanceof Date) {
+      return format(formData.orderDate, 'yyyy-MM-dd');
+    }
+    const date = formData.orderDate 
+      ? new Date(formData.orderDate) 
+      : new Date();
+    return !isNaN(date.getTime()) 
+      ? format(date, 'yyyy-MM-dd')
+      : format(new Date(), 'yyyy-MM-dd');
   };
 
   if (isLoading) {
@@ -319,30 +345,17 @@ export const MobileOrderForm: React.FC = () => {
               <div className="p-4 space-y-4 border-t">
                 <div className="space-y-2">
                   <Label htmlFor="orderDate" className="text-sm text-gray-600">FECHA DEL PEDIDO</Label>
-                  <Input
-                    id="orderDate"
-                    type="date"
-                    className="h-10"
-                    value={(() => {
-                      try {
-                        if (formData.orderDate instanceof Date) {
-                          return format(formData.orderDate, 'yyyy-MM-dd');
-                        }
-                        const date = formData.orderDate 
-                          ? new Date(formData.orderDate) 
-                          : new Date();
-                        return !isNaN(date.getTime()) 
-                          ? format(date, 'yyyy-MM-dd')
-                          : format(new Date(), 'yyyy-MM-dd');
-                      } catch (error) {
-                        console.error('Error formatting date:', error);
-                        return format(new Date(), 'yyyy-MM-dd');
-                      }
-                    })()}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      orderDate: new Date(e.target.value)
-                    }))}
+                  <DatePicker
+                    label="FECHA DEL PEDIDO"
+                    value={getDateValue()}
+                    onChange={(value) => {
+                      const date = value ? new Date(value) : null;
+                      setFormData(prev => ({
+                        ...prev,
+                        orderDate: date || new Date()
+                      }));
+                    }}
+                    className="w-full"
                   />
                 </div>
 

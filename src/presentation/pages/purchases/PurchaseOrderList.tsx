@@ -3,23 +3,39 @@ import { GenericList } from '../../components/common/GenericList';
 import { PurchaseOrder } from '../../../domain/models/purchase-order.model';
 import { PurchaseOrderServiceImpl } from '../../../domain/services/purchase-order.service.impl';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
+import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { OrderStatus } from '@/domain/models/base.entity';
+import { Product } from '@/domain/models/product.model';
 
 export function PurchaseOrderList() {
   const orderService = new PurchaseOrderServiceImpl();
   const supplierService = new SupplierServiceImpl();
+  const productService = new ProductServiceImpl();
+
   const [suppliers, setSuppliers] = React.useState<Record<string, string>>({});
+  const [products, setProducts] = React.useState<Product[]>([]);
 
   React.useEffect(() => {
-    const loadSuppliers = async () => {
-      const suppliersData = await supplierService.findAll();
-      const suppliersMap = suppliersData.reduce((acc, supplier) => {
-        acc[supplier.id] = supplier.commercialName;
-        return acc;
-      }, {} as Record<string, string>);
-      setSuppliers(suppliersMap);
+    const loadData = async () => {
+      try {
+        const [suppliersData, productsData] = await Promise.all([
+          supplierService.findAll(),
+          productService.findAll()
+        ]);
+
+        const suppliersMap = suppliersData.reduce((acc, supplier) => {
+          acc[supplier.id] = supplier.commercialName;
+          return acc;
+        }, {} as Record<string, string>);
+
+        setSuppliers(suppliersMap);
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
     };
-    loadSuppliers();
+
+    loadData();
   }, []);
 
   const getStatusLabel = (status: OrderStatus) => {
@@ -57,12 +73,7 @@ export function PurchaseOrderList() {
     {
       header: 'Fecha',
       accessor: 'orderDate' as keyof PurchaseOrder,
-      render: (item: PurchaseOrder) => formatDate(item.orderDate),
-    },
-    {
-      header: 'Estado',
-      accessor: 'status' as keyof PurchaseOrder,
-      render: (item: PurchaseOrder) => getStatusLabel(item.status),
+      type: 'date' as const,
     },
     {
       header: 'Total Productos',
@@ -71,6 +82,23 @@ export function PurchaseOrderList() {
     {
       header: 'Total Items',
       accessor: 'totalItems' as keyof PurchaseOrder,
+    },
+    {
+      header: 'Estado',
+      accessor: 'status' as keyof PurchaseOrder,
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: OrderStatus.PENDING, 
+          label: 'Pendiente', 
+          color: 'warning' as const 
+        },
+        { 
+          value: OrderStatus.COMPLETED, 
+          label: 'Completada', 
+          color: 'success' as const 
+        }
+      ]
     },
   ];
 
@@ -81,6 +109,9 @@ export function PurchaseOrderList() {
       addPath="/purchase-orders/new"
       backPath="/purchase-orders"
       service={orderService}
+      type="purchase"
+      products={products}
+      supplierName={suppliers}
     />
   );
 } 

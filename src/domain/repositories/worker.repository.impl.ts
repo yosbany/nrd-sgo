@@ -4,6 +4,20 @@ import { IWorkerRepository } from './interfaces/worker.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class WorkerRepositoryImpl extends BaseRepositoryImpl<Worker> implements IWorkerRepository {
+  protected modelProperties: (keyof Worker)[] = [
+    'name',
+    'primaryRoleId',
+    'phone',
+    'hireDate',
+    'monthlySalary',
+    'leaveBalance',
+    'leaveSalaryBalance',
+    'vacationSalaryBalance',
+    'bonusSalaryBalance',
+    'leaveHistory',
+    'payments'
+  ];
+
   constructor(db: Database) {
     super(db, 'workers');
   }

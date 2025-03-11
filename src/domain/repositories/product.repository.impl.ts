@@ -9,6 +9,30 @@ type FirebaseProductData = Omit<Product, 'id'> & {
 };
 
 export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implements IProductRepository {
+  protected modelProperties: (keyof Product)[] = [
+    'name',
+    'sku',
+    'imageUrl',
+    'isForSale',
+    'isMaterial',
+    'materialName',
+    'materialCode',
+    'salePrice',
+    'state',
+    'salesUnitCost',
+    'materialUnitCost',
+    'purchasePrice',
+    'salesUnitId',
+    'materialUnitId',
+    'purchaseUnitId',
+    'primarySupplierId',
+    'sector',
+    'sectorOrder',
+    'desiredStock',
+    'salesChannels',
+    'priceHistory'
+  ];
+
   constructor(db: Database) {
     super(db, 'products');
   }
@@ -34,11 +58,11 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
   }
 
   async findByMaterialUnit(unitId: string): Promise<Product[]> {
-    return this.findByField('materialUnit', unitId);
+    return this.findByField('materialUnitId', unitId);
   }
 
   async findBySalesUnit(unitId: string): Promise<Product[]> {
-    return this.findByField('salesUnit', unitId);
+    return this.findByField('salesUnitId', unitId);
   }
 
   async findByIsForSale(isForSale: boolean): Promise<Product[]> {

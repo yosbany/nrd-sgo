@@ -4,6 +4,16 @@ import { ISupplierRepository } from './interfaces/supplier.repository.interface'
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class SupplierRepositoryImpl extends BaseRepositoryImpl<Supplier> implements ISupplierRepository {
+  protected modelProperties: (keyof Supplier)[] = [
+    'commercialName',
+    'legalName',
+    'phone',
+    'address',
+    'email',
+    'rut',
+    'status'
+  ];
+
   constructor(db: Database) {
     super(db, 'suppliers');
   }

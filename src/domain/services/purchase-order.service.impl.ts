@@ -13,13 +13,16 @@ export class PurchaseOrderServiceImpl extends BaseServiceImpl<PurchaseOrder, IPu
   private calculateTotals(order: Partial<PurchaseOrder>): void {
     if (!order.products) {
       order.products = [];
-      order.totalItems = 0;
-      order.totalProducts = 0;
-      return;
     }
 
-    order.totalItems = order.products.length;
-    order.totalProducts = order.products.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    // Total de productos diferentes
+    order.totalProducts = order.products.length;
+    
+    // Total de items (suma de cantidades)
+    order.totalItems = order.products.reduce((sum, item) => {
+      const quantity = Number(item.quantity) || 0;
+      return sum + quantity;
+    }, 0);
   }
 
   async create(order: Partial<PurchaseOrder>): Promise<PurchaseOrder> {

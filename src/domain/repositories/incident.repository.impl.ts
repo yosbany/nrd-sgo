@@ -4,6 +4,16 @@ import { IIncidentRepository } from './interfaces/incident.repository.interface'
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class IncidentRepositoryImpl extends BaseRepositoryImpl<Incident> implements IIncidentRepository {
+  protected modelProperties: (keyof Incident)[] = [
+    'type',
+    'description',
+    'reportedByWorkerId',
+    'status',
+    'taskId',
+    'productId',
+    'recipeId'
+  ];
+
   constructor(db: Database) {
     super(db, 'incidents');
   }

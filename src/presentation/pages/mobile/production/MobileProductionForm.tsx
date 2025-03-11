@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { OrderStatus } from '@/domain/models/base.entity';
 import { format } from 'date-fns';
 import { QuantityInput } from '@/presentation/components/QuantityInput';
+import { DatePicker } from '@/presentation/components/ui/date-picker';
 
 export const MobileProductionForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -184,17 +185,21 @@ export const MobileProductionForm: React.FC = () => {
               <div className="p-4 space-y-4 border-t">
                 <div className="space-y-2">
                   <Label htmlFor="orderDate" className="text-sm text-gray-600">Fecha de Orden</Label>
-                  <Input
-                    id="orderDate"
-                    type="date"
-                    className="h-10"
-                    value={formData.orderDate instanceof Date 
-                      ? format(formData.orderDate, 'yyyy-MM-dd')
-                      : format(new Date(formData.orderDate || new Date()), 'yyyy-MM-dd')}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      orderDate: new Date(e.target.value)
+                  <DatePicker
+                    label="FECHA DE PRODUCCIÓN"
+                    value={(() => {
+                      if (formData.orderDate instanceof Date) {
+                        return format(formData.orderDate, 'yyyy-MM-dd');
+                      }
+                      return formData.orderDate
+                        ? format(formData.orderDate, 'yyyy-MM-dd')
+                        : format(new Date(formData.orderDate || new Date()), 'yyyy-MM-dd');
+                    })()}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      orderDate: e.target.value ? new Date(e.target.value) : new Date()
                     }))}
+                    className="w-full"
                   />
                 </div>
 

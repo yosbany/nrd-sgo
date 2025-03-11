@@ -26,24 +26,28 @@ export function IncidentList() {
     loadWorkerNames();
   }, []);
 
-  const getIncidentTypeLabel = (type: IncidentType) => {
-    switch (type) {
-      case IncidentType.PRODUCTION:
-        return 'Producción';
-      case IncidentType.TASK:
-        return 'Tarea';
-      case IncidentType.INVENTORY:
-        return 'Inventario';
-      default:
-        return type;
-    }
-  };
-
   const columns = [
     {
       header: 'Tipo',
       accessor: 'type' as keyof Incident,
-      render: (item: Incident) => getIncidentTypeLabel(item.type),
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: IncidentType.PRODUCTION, 
+          label: 'Producción', 
+          color: 'primary' as const 
+        },
+        { 
+          value: IncidentType.TASK, 
+          label: 'Tarea', 
+          color: 'info' as const 
+        },
+        { 
+          value: IncidentType.INVENTORY, 
+          label: 'Inventario', 
+          color: 'warning' as const 
+        }
+      ]
     },
     {
       header: 'Descripción',
@@ -57,8 +61,19 @@ export function IncidentList() {
     {
       header: 'Estado',
       accessor: 'status' as keyof Incident,
-      render: (item: Incident) =>
-        item.status === IncidentStatus.PENDING ? 'Pendiente' : 'Resuelto',
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: IncidentStatus.PENDING, 
+          label: 'Pendiente', 
+          color: 'warning' as const 
+        },
+        { 
+          value: IncidentStatus.RESOLVED, 
+          label: 'Resuelto', 
+          color: 'success' as const 
+        }
+      ]
     },
   ];
 

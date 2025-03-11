@@ -4,6 +4,14 @@ import { ICustomerRepository } from './interfaces/customer.repository.interface'
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class CustomerRepositoryImpl extends BaseRepositoryImpl<Customer> implements ICustomerRepository {
+  protected modelProperties: (keyof Customer)[] = [
+    'name',
+    'phone',
+    'email',
+    'address',
+    'status'
+  ];
+
   constructor(db: Database) {
     super(db, 'customers');
   }

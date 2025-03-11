@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '@/presentation/components/ui/tooltip';
 import { Field } from './GenericForm';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface Column {
   header: string;
@@ -75,6 +76,8 @@ export function ArrayField({
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [referencedData, setReferencedData] = useState<Record<string, Record<string, any>>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   const {
     columns,
@@ -147,6 +150,11 @@ export function ArrayField({
     onChange(newValue);
   };
 
+  const handleDeleteClick = (index: number) => {
+    setItemToDelete(index);
+    setDeleteDialogOpen(true);
+  };
+
   const handleSubmit = (formValues: any) => {
     const newValue = [...value];
     if (editingIndex !== null) {
@@ -176,6 +184,16 @@ export function ArrayField({
   return (
     <TooltipProvider>
       <div className="space-y-3">
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Confirmar eliminación"
+          description="¿Está seguro de que desea eliminar este elemento? Esta acción no se puede deshacer."
+          onConfirm={() => itemToDelete !== null && handleDelete(itemToDelete)}
+          confirmText="Eliminar"
+          variant="destructive"
+        />
+
         <div className="flex items-center justify-between">
           <Button 
             onClick={handleAdd} 
@@ -243,28 +261,26 @@ export function ArrayField({
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        {(!disableDeleteIf || !disableDeleteIf(item)) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleDelete(index);
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{deleteButtonTooltip}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteClick(index);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{deleteButtonTooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>

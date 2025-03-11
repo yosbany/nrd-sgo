@@ -4,6 +4,12 @@ import { IRoleRepository } from './interfaces/role.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class RoleRepositoryImpl extends BaseRepositoryImpl<Role> implements IRoleRepository {
+  protected modelProperties: (keyof Role)[] = [
+    'name', 
+    'isProduction', 
+    'tasks'
+  ];
+
   constructor(db: Database) {
     super(db, 'roles');
   }

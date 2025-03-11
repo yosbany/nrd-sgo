@@ -1,6 +1,7 @@
-import { ProductionOrder, ProductionOrderStatus } from '../../models/production-order.model';
+import { ProductionOrder } from '../../models/production-order.model';
 import { ProductionOrderServiceImpl } from '../production-order.service.impl';
 import { ProductionOrderRepositoryImpl } from '../../repositories/production-order.repository.impl';
+import { OrderStatus } from '../../models/base.entity';
 
 jest.mock('../../repositories/production-order.repository.impl');
 
@@ -32,9 +33,13 @@ describe('ProductionOrderService', () => {
     const mockOrder: ProductionOrder = {
       id: '1',
       responsibleWorkerId: 'worker1',
-      productionDate: new Date(),
+      orderDate: new Date(),
       recipes: [],
-      status: ProductionOrderStatus.PLANNED,
+      status: OrderStatus.PENDING,
+      consecutive: 1,
+      ratios: [],
+      totalItems: 0,
+      totalProducts: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };

@@ -4,6 +4,17 @@ import { IRecipeRepository } from './interfaces/recipe.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class RecipeRepositoryImpl extends BaseRepositoryImpl<Recipe> implements IRecipeRepository {
+  protected modelProperties: (keyof Recipe)[] = [
+    'name', 
+    'recipeType', 
+    'yieldUnitId', 
+    'yield', 
+    'cost', 
+    'materials', 
+    'primaryWorkerId', 
+    'notes'
+  ];
+
   constructor(db: Database) {
     super(db, 'recipes');
   }
@@ -11,5 +22,4 @@ export class RecipeRepositoryImpl extends BaseRepositoryImpl<Recipe> implements 
   async findByName(name: string): Promise<Recipe[]> {
     return this.findByField('name', name);
   }
-
-} 
+}

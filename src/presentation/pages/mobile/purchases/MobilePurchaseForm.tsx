@@ -21,6 +21,7 @@ import { Supplier } from '@/domain/models/supplier.model';
 import { Product } from '@/domain/models/product.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 import { QuantityInput } from '@/presentation/components/QuantityInput';
+import { DatePicker } from '@/presentation/components/ui/date-picker';
 
 export const MobilePurchaseForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -203,17 +204,21 @@ export const MobilePurchaseForm: React.FC = () => {
               <div className="p-4 space-y-4 border-t">
                 <div className="space-y-2">
                   <Label htmlFor="orderDate" className="text-sm text-gray-600">Fecha de Orden</Label>
-                  <Input
-                    id="orderDate"
-                    type="date"
-                    className="h-10"
-                    value={formData.orderDate instanceof Date 
-                      ? format(formData.orderDate, 'yyyy-MM-dd')
-                      : format(new Date(formData.orderDate || new Date()), 'yyyy-MM-dd')}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      orderDate: new Date(e.target.value)
+                  <DatePicker
+                    label="FECHA DE COMPRA"
+                    value={(() => {
+                      if (formData.orderDate instanceof Date) {
+                        return format(formData.orderDate, 'yyyy-MM-dd');
+                      }
+                      return formData.orderDate
+                        ? format(formData.orderDate, 'yyyy-MM-dd')
+                        : format(new Date(formData.orderDate || new Date()), 'yyyy-MM-dd');
+                    })()}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      orderDate: e.target.value ? new Date(e.target.value) : new Date()
                     }))}
+                    className="w-full"
                   />
                 </div>
 

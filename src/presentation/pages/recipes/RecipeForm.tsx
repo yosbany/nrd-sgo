@@ -370,7 +370,7 @@ export function RecipeForm() {
                   currency: 'UYU', 
                   minimumFractionDigits: 0 
                 })}
-                {recipe.yieldUnitId && units[recipe.yieldUnitId] ? ` / ${units[recipe.yieldUnitId]}` : ''}
+                {recipe.yieldUnitId && units[recipe.yieldUnitId] ? ` X ${units[recipe.yieldUnitId]}` : ''}
               </span>
             </div>
           </div>

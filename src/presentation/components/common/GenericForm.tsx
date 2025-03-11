@@ -6,6 +6,7 @@ import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { Select } from '@/presentation/components/ui/select';
 import { Textarea } from '@/presentation/components/ui/textarea';
+import { DatePicker } from '@/presentation/components/ui/date-picker';
 import { ArrowLeft, Save } from 'lucide-react';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
 import { BaseEntity } from '@/domain/models/base.entity';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 import { ArrayField } from './ArrayField';
 import { Checkbox } from '@/presentation/components/ui/checkbox';
 import { Separator } from '@/presentation/components/ui/separator';
+import { formatDateToServer } from '@/lib/utils';
 
 export interface RelatedService<T extends BaseEntity> {
   service: BaseService<T>;
@@ -59,7 +61,8 @@ export interface Field {
   placeholder?: string;
   relatedService?: RelatedService<any>;
   arrayConfig?: ArrayConfig;
-  onChange?: (value: any) => void;
+  readOnly?: boolean;
+  onChange?: (value: any, formData?: Record<string, any>) => void | Record<string, any>;
 }
 
 export interface Section<T extends BaseEntity> {
@@ -254,14 +257,12 @@ export function GenericForm<T extends BaseEntity>({
   const getFieldValue = (field: Field) => {
     const value = formData[field.name as keyof T];
     
-    if (field.type === 'date' && value) {
-      if (value instanceof Date) {
-        return value.toISOString().split('T')[0];
-      }
-      if (typeof value === 'string') {
-        return new Date(value).toISOString().split('T')[0];
-      }
-      return '';
+    if (field.type === 'array') {
+      return Array.isArray(value) ? value : [];
+    }
+    
+    if (field.type === 'date') {
+      return formatDateToServer(value as string | Date | undefined);
     }
     
     if (field.type === 'boolean') {
@@ -297,8 +298,9 @@ export function GenericForm<T extends BaseEntity>({
           processedValue = '';
         }
       }
-    } else if (field.type === 'date' && value) {
-      processedValue = new Date(value);
+    } else if (field.type === 'date') {
+      // Para campos de fecha, mantenemos el valor en formato YYYY-MM-DD
+      processedValue = value;
     } else if (field.type === 'boolean') {
       processedValue = Boolean(value);
     } else if (field.type === 'select') {
@@ -314,7 +316,7 @@ export function GenericForm<T extends BaseEntity>({
 
     // Call field's onChange handler if provided
     if (field.onChange) {
-      const result = field.onChange(processedValue);
+      const result = field.onChange(processedValue, formData);
       if (result !== undefined) {
         processedValue = result;
         setFormData(prev => ({
@@ -367,18 +369,11 @@ export function GenericForm<T extends BaseEntity>({
         {field.label}
         {field.required && <span className="text-destructive ml-1">*</span>}
       </Label>
-      {field.type === 'array' ? (
-        <ArrayField
-          value={formData[field.name as keyof T] as any[] || []}
-          onChange={(value) => setFormData(prev => ({ ...prev, [field.name]: value }))}
-          config={field.arrayConfig!}
-          FormContent={ArrayFormContent}
-        />
-      ) : field.type === 'select' ? (
+      {field.type === 'select' ? (
         <Select
           id={field.name}
           name={field.name}
-          value={getInputValue(field)}
+          value={getFieldValue(field) as string}
           onChange={(value) => handleChange(value, field)}
           required={field.required}
           className="w-full"
@@ -391,7 +386,7 @@ export function GenericForm<T extends BaseEntity>({
         <Textarea
           id={field.name}
           name={field.name}
-          value={getInputValue(field)}
+          value={getFieldValue(field) as string}
           onChange={(e) => handleChange(e.target.value, field)}
           required={field.required}
           placeholder={field.placeholder}
@@ -401,22 +396,41 @@ export function GenericForm<T extends BaseEntity>({
         <div className="flex items-center space-x-2">
           <Checkbox
             id={field.name}
+            name={field.name}
             checked={getFieldValue(field) as boolean}
-            onCheckedChange={(checked) => handleChange(!!checked, field)}
+            onCheckedChange={(checked) => handleChange(checked, field)}
+            disabled={field.readOnly}
           />
           <label
             htmlFor={field.name}
-            className="text-sm text-muted-foreground cursor-pointer"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             {field.placeholder || field.label}
           </label>
         </div>
+      ) : field.type === 'array' ? (
+        <ArrayField
+          config={field.arrayConfig!}
+          value={getFieldValue(field) as any[]}
+          onChange={(value) => handleChange(value, field)}
+          FormContent={ArrayFormContent}
+        />
+      ) : field.type === 'date' ? (
+        <DatePicker
+          id={field.name}
+          name={field.name}
+          value={getFieldValue(field) as string}
+          onChange={(value) => handleChange(value, field)}
+          required={field.required}
+          placeholder={field.placeholder}
+          className="w-full"
+        />
       ) : (
         <Input
           id={field.name}
           type={field.type}
           name={field.name}
-          value={getInputValue(field)}
+          value={getFieldValue(field) as string}
           onChange={(e) => handleChange(e.target.value, field)}
           required={field.required}
           placeholder={field.placeholder}

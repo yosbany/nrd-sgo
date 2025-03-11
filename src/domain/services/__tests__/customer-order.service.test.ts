@@ -1,6 +1,7 @@
-import { CustomerOrder, CustomerOrderStatus } from '../../models/customer-order.model';
+import { CustomerOrder } from '../../models/customer-order.model';
 import { CustomerOrderServiceImpl } from '../customer-order.service.impl';
 import { CustomerOrderRepositoryImpl } from '../../repositories/customer-order.repository.impl';
+import { OrderStatus } from '../../models/base.entity';
 
 jest.mock('../../repositories/customer-order.repository.impl');
 
@@ -20,7 +21,8 @@ describe('CustomerOrderService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findByStatus: jest.fn(),
-      findByCustomerId: jest.fn()
+      findByCustomerId: jest.fn(),
+      findByDateRange: jest.fn()
     } as any;
 
     // Asignar el mock al constructor del repositorio
@@ -37,15 +39,16 @@ describe('CustomerOrderService', () => {
           id: '1',
           customerId: 'customer1',
           orderDate: new Date(),
-          items: [
+          products: [
             {
               productId: 'product1',
               quantity: 10
             }
           ],
-          status: CustomerOrderStatus.PENDING,
-          totalItems: 1,
-          totalProducts: 10,
+          recipes: [],
+          status: OrderStatus.PENDING,
+          totalItems: 10,
+          totalProducts: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -53,10 +56,10 @@ describe('CustomerOrderService', () => {
 
       mockRepository.findByStatus.mockResolvedValue(mockOrders);
 
-      const result = await service.findByStatus(CustomerOrderStatus.PENDING);
+      const result = await service.findByStatus(OrderStatus.PENDING);
 
       expect(result).toEqual(mockOrders);
-      expect(mockRepository.findByStatus).toHaveBeenCalledWith(CustomerOrderStatus.PENDING);
+      expect(mockRepository.findByStatus).toHaveBeenCalledWith(OrderStatus.PENDING);
     });
   });
 
@@ -67,15 +70,16 @@ describe('CustomerOrderService', () => {
           id: '1',
           customerId: 'customer1',
           orderDate: new Date(),
-          items: [
+          products: [
             {
               productId: 'product1',
               quantity: 10
             }
           ],
-          status: CustomerOrderStatus.PENDING,
-          totalItems: 1,
-          totalProducts: 10,
+          recipes: [],
+          status: OrderStatus.PENDING,
+          totalItems: 10,
+          totalProducts: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -95,15 +99,16 @@ describe('CustomerOrderService', () => {
       id: '1',
       customerId: 'customer1',
       orderDate: new Date(),
-      items: [
+      products: [
         {
           productId: 'product1',
           quantity: 10
         }
       ],
-      status: CustomerOrderStatus.PENDING,
-      totalItems: 1,
-      totalProducts: 10,
+      recipes: [],
+      status: OrderStatus.PENDING,
+      totalItems: 10,
+      totalProducts: 1,
       createdAt: new Date(),
       updatedAt: new Date()
     };

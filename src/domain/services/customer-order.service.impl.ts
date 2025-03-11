@@ -11,23 +11,21 @@ export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICu
   }
 
   private calculateTotals(order: Partial<CustomerOrder>): void {
-    let totalProducts = 0;
-    let totalItems = 0;
-    
     if (!order.products) {
       order.products = [];
-      totalItems += 0;
-      totalProducts += 0;
     }
 
     if (!order.recipes) {
       order.recipes = [];
-      totalItems += 0;
-      totalProducts += 0;
     }
 
+    // Total de productos y recetas diferentes
     order.totalProducts = order.products.length + order.recipes.length;
-    order.totalItems = order.products.reduce((sum, item) => sum + (item.quantity || 0), 0) + order.recipes.reduce((sum, item) => sum + (item.quantity || 0), 0);;
+    
+    // Total de items (suma de cantidades de productos y recetas)
+    const productsTotal = order.products.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const recipesTotal = order.recipes.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    order.totalItems = productsTotal + recipesTotal;
   }
 
   async create(order: Partial<CustomerOrder>): Promise<CustomerOrder> {
@@ -45,7 +43,7 @@ export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICu
     return this.repository.findByCustomerId(customerId);
   }
 
-  async findByStatus(status: CustomerOrderStatus): Promise<CustomerOrder[]> {
+  async findByStatus(status: OrderStatus): Promise<CustomerOrder[]> {
     return this.repository.findByStatus(status);
   }
 

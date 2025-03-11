@@ -5,6 +5,17 @@ import { BaseRepositoryImpl } from './base.repository.impl';
 import { OrderStatus } from '../models/base.entity';
 
 export class ProductionOrderRepositoryImpl extends BaseRepositoryImpl<ProductionOrder> implements IProductionOrderRepository {
+  protected modelProperties: (keyof ProductionOrder)[] = [
+    'consecutive',
+    'orderDate',
+    'status',
+    'responsibleWorkerId',
+    'recipes',
+    'ratios',
+    'totalItems',
+    'totalProducts'
+  ];
+
   constructor(db: Database) {
     super(db, 'production-orders');
   }

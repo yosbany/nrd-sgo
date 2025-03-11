@@ -17,4 +17,6 @@ export interface ProductionOrder extends BaseEntity {
   responsibleWorkerId: string;
   recipes: RecipeItems[];
   ratios: ProductionRatio[];
+  totalItems: number;
+  totalProducts: number;
 } 

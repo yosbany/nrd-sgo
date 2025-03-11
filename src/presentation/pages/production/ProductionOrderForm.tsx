@@ -32,7 +32,7 @@ export function ProductionOrderForm() {
       },
     },
     {
-      name: 'productionDate',
+      name: 'orderDate',
       label: 'Fecha de Producción',
       type: 'date' as const,
       required: true,

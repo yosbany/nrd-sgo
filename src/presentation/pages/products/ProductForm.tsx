@@ -9,7 +9,9 @@ import { SupplierServiceImpl } from '../../../domain/services/supplier.service.i
 export function ProductForm() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = React.useState<Partial<Product>>({});
+  const [units, setUnits] = React.useState<Record<string, any>>({});
   const productService = new ProductServiceImpl();
+  const unitService = new UnitServiceImpl();
 
   React.useEffect(() => {
     if (id) {
@@ -18,6 +20,38 @@ export function ProductForm() {
       });
     }
   }, [id]);
+
+  React.useEffect(() => {
+    // Cargar todas las unidades para tener acceso a sus factores de conversión
+    unitService.findAll().then(unitsData => {
+      const unitsMap: Record<string, any> = {};
+      unitsData.forEach(unit => {
+        unitsMap[unit.id] = unit;
+      });
+      setUnits(unitsMap);
+    });
+  }, []);
+
+  const calculateUnitCosts = (values: Partial<Product>) => {
+    const purchasePrice = Number(values.purchasePrice) || 0;
+    const purchaseUnit = units[values.purchaseUnitId || ''];
+    const salesUnit = units[values.salesUnitId || ''];
+    const materialUnit = units[values.materialUnitId || ''];
+
+    // Factor de conversión para venta
+    if (purchaseUnit && salesUnit && purchasePrice > 0) {
+      const salesConversionFactor = salesUnit.conversionFactor / purchaseUnit.conversionFactor;
+      values.salesUnitCost = purchasePrice * salesConversionFactor;
+    }
+
+    // Factor de conversión para material
+    if (purchaseUnit && materialUnit && purchasePrice > 0) {
+      const materialConversionFactor = materialUnit.conversionFactor / purchaseUnit.conversionFactor;
+      values.materialUnitCost = purchasePrice * materialConversionFactor;
+    }
+
+    return values;
+  };
 
   const generalInfoFields = [
     {
@@ -68,6 +102,9 @@ export function ProductForm() {
       name: 'purchasePrice',
       label: 'Precio de Compra',
       type: 'number' as const,
+      onChange: (value: number, formData: Partial<Product>) => {
+        return calculateUnitCosts({ ...formData, purchasePrice: value });
+      },
     },
     {
       name: 'purchaseUnitId',
@@ -76,6 +113,9 @@ export function ProductForm() {
       relatedService: {
         service: new UnitServiceImpl(),
         labelField: 'name',
+      },
+      onChange: (value: string, formData: Partial<Product>) => {
+        return calculateUnitCosts({ ...formData, purchaseUnitId: value });
       },
     },
     {
@@ -104,11 +144,15 @@ export function ProductForm() {
         service: new UnitServiceImpl(),
         labelField: 'name',
       },
+      onChange: (value: string, formData: Partial<Product>) => {
+        return calculateUnitCosts({ ...formData, salesUnitId: value });
+      },
     },
     {
       name: 'salesUnitCost',
       label: 'Costo Unitario de Venta',
       type: 'number' as const,
+      readOnly: true,
     },
     {
       name: 'salesChannels',
@@ -186,11 +230,15 @@ export function ProductForm() {
         service: new UnitServiceImpl(),
         labelField: 'name',
       },
+      onChange: (value: string, formData: Partial<Product>) => {
+        return calculateUnitCosts({ ...formData, materialUnitId: value });
+      },
     },
     {
       name: 'materialUnitCost',
       label: 'Costo Unitario de Material',
       type: 'number' as const,
+      readOnly: true,
     },
   ];
 

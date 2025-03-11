@@ -4,6 +4,12 @@ import { IUnitRepository } from './interfaces/unit.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
 
 export class UnitRepositoryImpl extends BaseRepositoryImpl<Unit> implements IUnitRepository {
+  protected modelProperties: (keyof Unit)[] = [
+    'name', 
+    'symbol', 
+    'conversions'
+  ];
+
   constructor(db: Database) {
     super(db, 'units');
   }

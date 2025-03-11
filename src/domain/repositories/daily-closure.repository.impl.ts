@@ -4,6 +4,16 @@ import { BaseRepositoryImpl } from './base.repository.impl';
 import { IDailyClosureRepository } from './interfaces/daily-closure.repository.interface';
 
 export class DailyClosureRepository extends BaseRepositoryImpl<DailyClosure> implements IDailyClosureRepository {
+  protected modelProperties: (keyof DailyClosure)[] = [
+    'date', 
+    'totalExpenses', 
+    'totalIncome', 
+    'totalDifference', 
+    'observations', 
+    'accounts', 
+    'transactions'
+  ];
+
   constructor(db: Database) {
     super(db, 'daily-closures');
   }

@@ -16,7 +16,19 @@ export function CustomerList() {
     {
       header: 'Estado',
       accessor: 'status' as keyof Customer,
-      render: (item: Customer) => (item.status === CustomerStatus.ACTIVE ? 'Activo' : 'Inactivo'),
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: CustomerStatus.ACTIVE, 
+          label: 'Activo', 
+          color: 'success' as const 
+        },
+        { 
+          value: CustomerStatus.INACTIVE, 
+          label: 'Inactivo', 
+          color: 'secondary' as const 
+        }
+      ]
     },
   ];
 

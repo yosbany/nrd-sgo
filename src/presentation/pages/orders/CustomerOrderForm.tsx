@@ -5,6 +5,7 @@ import { CustomerOrder } from '../../../domain/models/customer-order.model';
 import { CustomerOrderServiceImpl } from '../../../domain/services/customer-order.service.impl';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
+import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { OrderStatus } from '@/domain/models/base.entity';
 
 export function CustomerOrderForm() {
@@ -48,7 +49,65 @@ export function CustomerOrderForm() {
       ],
     },
     {
-      name: 'items',
+      name: 'recipes',
+      label: 'Recetas',
+      type: 'array' as const,
+      arrayConfig: {
+        columns: [
+          { 
+            header: 'Receta', 
+            accessor: 'recipeId',
+            reference: {
+              field: {
+                name: 'recipeId',
+                label: 'Receta',
+                type: 'select' as const,
+                relatedService: {
+                  service: new RecipeServiceImpl(),
+                  labelField: 'name',
+                },
+              },
+              displayField: 'name',
+            },
+          },
+          { header: 'Cantidad', accessor: 'quantity' }
+        ],
+        form: {
+          fields: [
+            {
+              name: 'recipeId',
+              label: 'Receta',
+              type: 'select' as const,
+              required: true,
+              relatedService: {
+                service: new RecipeServiceImpl(),
+                labelField: 'name',
+              },
+            },
+            {
+              name: 'quantity',
+              label: 'Cantidad',
+              type: 'number' as const,
+              required: true,
+              placeholder: 'Ej: 5',
+            }
+          ],
+          emptyState: {
+            title: 'No hay recetas agregadas',
+            description: 'Haga clic en el botón "Agregar" para comenzar a agregar recetas al pedido.',
+          },
+          modalTitles: {
+            add: 'Agregar Receta',
+            edit: 'Modificar Receta',
+          },
+          addButtonText: 'Agregar Receta',
+          editButtonTooltip: 'Modificar esta receta',
+          deleteButtonTooltip: 'Eliminar esta receta',
+        },
+      },
+    },
+    {
+      name: 'products',
       label: 'Productos',
       type: 'array' as const,
       arrayConfig: {

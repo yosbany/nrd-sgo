@@ -1,4 +1,3 @@
-import React from 'react';
 import { GenericList } from '../../components/common/GenericList';
 import { Product, ProductStatus } from '../../../domain/models/product.model';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
@@ -17,7 +16,19 @@ export function ProductList() {
     {
       header: 'Estado',
       accessor: 'state' as keyof Product,
-      render: (item: Product) => (item.state === ProductStatus.ACTIVE ? 'Activo' : 'Inactivo'),
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: ProductStatus.ACTIVE, 
+          label: 'Activo', 
+          color: 'success' as const 
+        },
+        { 
+          value: ProductStatus.INACTIVE, 
+          label: 'Inactivo', 
+          color: 'secondary' as const 
+        }
+      ]
     },
     {
       header: 'Tipo',
@@ -27,7 +38,7 @@ export function ProductList() {
         if (item.isMaterial) return 'Material';
         if (item.isForSale) return 'Venta';
         return 'N/A';
-      },
+      }
     },
   ];
 

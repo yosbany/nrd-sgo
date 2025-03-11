@@ -48,7 +48,7 @@ export function PurchaseOrderForm() {
       ],
     },
     {
-      name: 'items',
+      name: 'products',
       label: 'Productos',
       type: 'array' as const,
       arrayConfig: {

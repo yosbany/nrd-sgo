@@ -16,7 +16,19 @@ export function SupplierList() {
     {
       header: 'Estado',
       accessor: 'status' as keyof Supplier,
-      render: (item: Supplier) => (item.status === SupplierStatus.ACTIVE ? 'Activo' : 'Inactivo'),
+      type: 'tag' as const,
+      tags: [
+        { 
+          value: SupplierStatus.ACTIVE, 
+          label: 'Activo', 
+          color: 'success' as const 
+        },
+        { 
+          value: SupplierStatus.INACTIVE, 
+          label: 'Inactivo', 
+          color: 'secondary' as const 
+        }
+      ]
     },
   ];
 
