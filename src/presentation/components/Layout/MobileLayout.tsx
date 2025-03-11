@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FaShoppingCart, FaClipboardList, FaIndustry, FaHome, FaChevronLeft } from 'react-icons/fa';
 import { Button } from '@/presentation/components/ui/button';
@@ -14,6 +14,33 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === '/mobile' || location.pathname === '/mobile/dashboard';
+
+  useEffect(() => {
+    const requestFullscreen = async () => {
+      try {
+        const docElement = document.documentElement;
+        if (docElement.requestFullscreen) {
+          await docElement.requestFullscreen();
+        } else if ((docElement as any).webkitRequestFullscreen) {
+          await (docElement as any).webkitRequestFullscreen();
+        } else if ((docElement as any).msRequestFullscreen) {
+          await (docElement as any).msRequestFullscreen();
+        }
+      } catch (error) {
+        console.log('No se pudo activar el modo pantalla completa:', error);
+      }
+    };
+
+    requestFullscreen();
+
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.log('Error al salir de pantalla completa:', err);
+        });
+      }
+    };
+  }, []);
 
   const getPageInfo = () => {
     const currentPath = location.pathname;
