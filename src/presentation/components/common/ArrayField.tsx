@@ -198,7 +198,7 @@ export function ArrayField({
           <Button 
             onClick={handleAdd} 
             size="sm" 
-            variant="outline" 
+            variant="secondary" 
             className="h-8"
             type="button"
           >
@@ -244,8 +244,8 @@ export function ArrayField({
                             <TooltipTrigger asChild>
                               <Button
                                 type="button"
-                                variant="ghost"
-                                size="icon"
+                                variant="secondary"
+                                size="sm"
                                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -265,8 +265,8 @@ export function ArrayField({
                           <TooltipTrigger asChild>
                             <Button
                               type="button"
-                              variant="ghost"
-                              size="icon"
+                              variant="secondary"
+                              size="sm"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               onClick={(e) => {
                                 e.preventDefault();

@@ -8,7 +8,7 @@ import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
 
 export const MobileOrderView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -71,28 +71,6 @@ export const MobileOrderView: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'text-yellow-500 bg-yellow-500/10';
-      case OrderStatus.COMPLETED:
-        return 'text-green-500 bg-green-500/10';
-      default:
-        return 'text-gray-500 bg-gray-500/10';
-    }
-  };
-
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
-    }
-  };
-
   const getCustomerName = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);
     return customer?.name || 'No asignado';
@@ -134,7 +112,7 @@ export const MobileOrderView: React.FC = () => {
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Estado</span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-              {getStatusLabel(order.status)}
+              {OrderStatusLabel[order.status]}
             </span>
           </div>
           <div className="flex justify-between items-center">

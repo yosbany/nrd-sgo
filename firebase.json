@@ -9,6 +9,9 @@
       },
       "purchase-orders": {
         ".indexOn": ["status", "supplierId", "orderDate"]
+      },
+      "parameters": {
+        ".indexOn": ["code", "name"]
       }
     }
   }

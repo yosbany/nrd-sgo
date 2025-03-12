@@ -5,11 +5,16 @@ import { ProductionOrder } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatus } from '@/domain/models/order-status.enum';
+
+type InitialOrder = Pick<ProductionOrder, 'orderDate' | 'status'>;
 
 export function ProductionOrderForm() {
   const { id } = useParams<{ id: string }>();
-  const [order, setOrder] = React.useState<Partial<ProductionOrder>>({});
+  const [order, setOrder] = React.useState<InitialOrder>({
+    orderDate: new Date(),
+    status: OrderStatus.PENDIENTE as const,
+  });
   const orderService = new ProductionOrderServiceImpl();
 
   React.useEffect(() => {
@@ -36,16 +41,18 @@ export function ProductionOrderForm() {
       label: 'Fecha de Producción',
       type: 'date' as const,
       required: true,
+      readOnly: true,
     },
     {
       name: 'status',
       label: 'Estado',
       type: 'select' as const,
       required: true,
-      options: [
-        { value: OrderStatus.PENDING, label: 'Pendiente' },
-        { value: OrderStatus.COMPLETED, label: 'Completada' }
-      ],
+      readOnly: !id,
+      options: Object.values(OrderStatus).map(status => ({
+        value: status,
+        label: status
+      })),
     },
     {
       name: 'recipes',
@@ -69,8 +76,7 @@ export function ProductionOrderForm() {
               displayField: 'name',
             },
           },
-          { header: 'Cantidad', accessor: 'quantity' },
-          { header: 'Ratio', accessor: 'ratio' },
+          { header: 'Cantidad', accessor: 'quantity' }
         ],
         form: {
           fields: [
@@ -90,14 +96,7 @@ export function ProductionOrderForm() {
               type: 'number' as const,
               required: true,
               placeholder: 'Ej: 10',
-            },
-            {
-              name: 'ratio',
-              label: 'Ratio',
-              type: 'number' as const,
-              required: true,
-              placeholder: 'Ej: 1.5',
-            },
+            }
           ],
           emptyState: {
             title: 'No hay recetas agregadas',

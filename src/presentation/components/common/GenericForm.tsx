@@ -159,6 +159,7 @@ function ArrayFormContent({
                 value={formData[formField.name] || ''}
                 onChange={(value) => handleFieldChange(value, formField)}
                 required={formField.required}
+                readOnly={formField.readOnly}
                 className="w-full"
                 options={getFieldOptions(formField)}
                 placeholder={formField.placeholder || "Seleccione una opción"}
@@ -344,9 +345,11 @@ export function GenericForm<T extends BaseEntity>({
       }
       onSuccess?.();
       navigate(backPath);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al guardar el registro:', error);
-      toast.error('Error al guardar el registro');
+      // Extract error message and show it in toast
+      const errorMessage = error?.message || 'Error al guardar el registro';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -376,6 +379,7 @@ export function GenericForm<T extends BaseEntity>({
           value={getFieldValue(field) as string}
           onChange={(value) => handleChange(value, field)}
           required={field.required}
+          readOnly={field.readOnly}
           className="w-full"
           options={getFieldOptions(field)}
           placeholder={field.placeholder || "Seleccione una opción"}

@@ -8,6 +8,7 @@ export function ParameterList() {
 
   const columns = [
     { header: 'Nombre', accessor: 'name' as keyof Parameter },
+    { header: 'Código', accessor: 'code' as keyof Parameter },
     { header: 'Valor', accessor: 'value' as keyof Parameter },
     {
       header: 'Descripción',

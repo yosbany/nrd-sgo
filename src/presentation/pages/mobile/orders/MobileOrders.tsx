@@ -14,11 +14,11 @@ import { CustomerOrderServiceImpl } from '@/domain/services/customer-order.servi
 import { CustomerServiceImpl } from '@/domain/services/customer.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Eye, Pencil, Trash2, MessageCircle } from 'lucide-react';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { Plus } from 'lucide-react';
 import { OrderActions } from '@/presentation/components/OrderActions';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
+import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
 
 export const MobileOrders: React.FC = () => {
   const [orders, setOrders] = React.useState<CustomerOrder[]>([]);
@@ -84,28 +84,6 @@ export const MobileOrders: React.FC = () => {
     } catch (error) {
       console.error('Error formatting date:', error);
       return 'Fecha no disponible';
-    }
-  };
-
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'text-yellow-500 bg-yellow-500/10';
-      case OrderStatus.COMPLETED:
-        return 'text-green-500 bg-green-500/10';
-      default:
-        return 'text-gray-500 bg-gray-500/10';
-    }
-  };
-
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
     }
   };
 
@@ -178,7 +156,7 @@ export const MobileOrders: React.FC = () => {
                           </span>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
+                          {OrderStatusLabel[order.status]}
                         </span>
                       </div>
 

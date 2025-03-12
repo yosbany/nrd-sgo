@@ -4,23 +4,27 @@ import { ProductionOrder } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
+import { OrderStatus } from '@/domain/models/order-status.enum';
 import { Recipe } from '@/domain/models/recipe.model';
 
 export function ProductionOrderList() {
   const orderService = new ProductionOrderServiceImpl();
   const workerService = new WorkerServiceImpl();
   const recipeService = new RecipeServiceImpl();
+  const unitService = new UnitServiceImpl();
 
   const [workers, setWorkers] = React.useState<Record<string, string>>({});
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
+  const [units, setUnits] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const [workersData, recipesData] = await Promise.all([
+        const [workersData, recipesData, unitsData] = await Promise.all([
           workerService.findAll(),
-          recipeService.findAll()
+          recipeService.findAll(),
+          unitService.findAll()
         ]);
 
         const workersMap = workersData.reduce((acc, worker) => {
@@ -28,8 +32,14 @@ export function ProductionOrderList() {
           return acc;
         }, {} as Record<string, string>);
 
+        const unitsMap = unitsData.reduce((acc, unit) => {
+          acc[unit.id] = unit.name;
+          return acc;
+        }, {} as Record<string, string>);
+
         setWorkers(workersMap);
         setRecipes(recipesData);
+        setUnits(unitsMap);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -57,6 +67,16 @@ export function ProductionOrderList() {
     {
       header: 'Total Items',
       accessor: 'totalItems' as keyof ProductionOrder,
+      render: (item: ProductionOrder) => {
+        const firstRecipe = item.recipes?.[0];
+        if (firstRecipe) {
+          const recipe = recipes.find(r => r.id === firstRecipe.recipeId);
+          if (recipe && recipe.yieldUnitId) {
+            return `${item.totalItems} ${units[recipe.yieldUnitId] || 'Unidad no encontrada'}`;
+          }
+        }
+        return item.totalItems;
+      },
     },
     {
       header: 'Estado',
@@ -64,14 +84,24 @@ export function ProductionOrderList() {
       type: 'tag' as const,
       tags: [
         { 
-          value: OrderStatus.PENDING, 
+          value: OrderStatus.PENDIENTE, 
           label: 'Pendiente', 
           color: 'warning' as const 
         },
         { 
-          value: OrderStatus.COMPLETED, 
+          value: OrderStatus.ENVIADA, 
+          label: 'Enviada', 
+          color: 'info' as const 
+        },
+        { 
+          value: OrderStatus.COMPLETADA, 
           label: 'Completada', 
           color: 'success' as const 
+        },
+        { 
+          value: OrderStatus.CANCELADA, 
+          label: 'Cancelada', 
+          color: 'danger' as const 
         }
       ]
     },
@@ -87,6 +117,7 @@ export function ProductionOrderList() {
       type="production"
       recipes={recipes}
       workerName={workers}
+      units={units}
     />
   );
 } 

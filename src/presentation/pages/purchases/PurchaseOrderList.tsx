@@ -4,23 +4,27 @@ import { PurchaseOrder } from '../../../domain/models/purchase-order.model';
 import { PurchaseOrderServiceImpl } from '../../../domain/services/purchase-order.service.impl';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
+import { OrderStatus } from '@/domain/models/order-status.enum';
 import { Product } from '@/domain/models/product.model';
 
 export function PurchaseOrderList() {
   const orderService = new PurchaseOrderServiceImpl();
   const supplierService = new SupplierServiceImpl();
   const productService = new ProductServiceImpl();
+  const unitService = new UnitServiceImpl();
 
   const [suppliers, setSuppliers] = React.useState<Record<string, string>>({});
   const [products, setProducts] = React.useState<Product[]>([]);
+  const [units, setUnits] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const [suppliersData, productsData] = await Promise.all([
+        const [suppliersData, productsData, unitsData] = await Promise.all([
           supplierService.findAll(),
-          productService.findAll()
+          productService.findAll(),
+          unitService.findAll()
         ]);
 
         const suppliersMap = suppliersData.reduce((acc, supplier) => {
@@ -28,8 +32,14 @@ export function PurchaseOrderList() {
           return acc;
         }, {} as Record<string, string>);
 
+        const unitsMap = unitsData.reduce((acc, unit) => {
+          acc[unit.id] = unit.name;
+          return acc;
+        }, {} as Record<string, string>);
+
         setSuppliers(suppliersMap);
         setProducts(productsData);
+        setUnits(unitsMap);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -37,31 +47,6 @@ export function PurchaseOrderList() {
 
     loadData();
   }, []);
-
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completada';
-      default:
-        return status;
-    }
-  };
-
-  const formatDate = (date: string | Date | undefined) => {
-    if (!date) return '';
-    try {
-      const d = new Date(date);
-      const day = d.getDate().toString().padStart(2, '0');
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
-    }
-  };
 
   const columns = [
     {
@@ -82,6 +67,16 @@ export function PurchaseOrderList() {
     {
       header: 'Total Items',
       accessor: 'totalItems' as keyof PurchaseOrder,
+      render: (item: PurchaseOrder) => {
+        const firstProduct = item.products?.[0];
+        if (firstProduct) {
+          const product = products.find(p => p.id === firstProduct.productId);
+          if (product?.purchaseUnitId) {
+            return `${item.totalItems} ${units[product.purchaseUnitId] || 'Unidad no encontrada'}`;
+          }
+        }
+        return item.totalItems;
+      },
     },
     {
       header: 'Estado',
@@ -89,14 +84,24 @@ export function PurchaseOrderList() {
       type: 'tag' as const,
       tags: [
         { 
-          value: OrderStatus.PENDING, 
+          value: OrderStatus.PENDIENTE, 
           label: 'Pendiente', 
           color: 'warning' as const 
         },
         { 
-          value: OrderStatus.COMPLETED, 
+          value: OrderStatus.ENVIADA, 
+          label: 'Enviada', 
+          color: 'info' as const 
+        },
+        { 
+          value: OrderStatus.COMPLETADA, 
           label: 'Completada', 
           color: 'success' as const 
+        },
+        { 
+          value: OrderStatus.CANCELADA, 
+          label: 'Cancelada', 
+          color: 'danger' as const 
         }
       ]
     },
@@ -112,6 +117,7 @@ export function PurchaseOrderList() {
       type="purchase"
       products={products}
       supplierName={suppliers}
+      units={units}
     />
   );
 } 

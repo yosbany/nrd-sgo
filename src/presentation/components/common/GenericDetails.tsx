@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
 import { BaseEntity } from '@/domain/models/base.entity';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Field {
   label: string;
@@ -89,7 +90,7 @@ export function GenericDetails<T extends BaseEntity>({
         </div>
         <div className="flex items-center gap-4">
           <Button
-            variant="ghost"
+            variant="secondary"
             onClick={() => navigate(backPath)}
             className="flex items-center gap-2"
           >
@@ -97,13 +98,13 @@ export function GenericDetails<T extends BaseEntity>({
             Volver
           </Button>
           <Link to={editPath}>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="secondary" className="flex items-center gap-2">
               <Pencil className="h-4 w-4" />
               Editar
             </Button>
           </Link>
           <Button
-            variant="destructive"
+            variant="danger"
             onClick={handleDelete}
             className="flex items-center gap-2"
           >
@@ -114,27 +115,33 @@ export function GenericDetails<T extends BaseEntity>({
       </div>
 
       <Card className="p-6">
-        <dl className="grid gap-6 md:grid-cols-2">
+        <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {fieldValues.map((field, index) => (
-            <div key={index} className={`space-y-2 ${React.isValidElement(field.value) ? 'col-span-2' : ''}`}>
-              <dt className="text-sm font-semibold tracking-tight text-foreground/90">
-                {field.label}
-              </dt>
-              <dd className="text-sm">
-                {React.isValidElement(field.value) ? (
-                  <div className="rounded-md border">
-                    <div className="relative w-full overflow-auto">
-                      <table className="w-full caption-bottom text-sm">
-                        <tbody>
-                          {field.value}
-                        </tbody>
-                      </table>
-                    </div>
+            <div 
+              key={index} 
+              className={cn(
+                React.isValidElement(field.value) ? "col-span-full" : ""
+              )}
+            >
+              {React.isValidElement(field.value) ? (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-muted-foreground mb-2">
+                    {field.label}
                   </div>
-                ) : (
-                  field.value || <span className="text-muted-foreground">-</span>
-                )}
-              </dd>
+                  {field.value}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">
+                    {field.label}:
+                  </dt>
+                  <dd>
+                    <span className="text-base font-medium">
+                      {field.value || <span className="text-muted-foreground italic">No disponible</span>}
+                    </span>
+                  </dd>
+                </div>
+              )}
             </div>
           ))}
         </dl>

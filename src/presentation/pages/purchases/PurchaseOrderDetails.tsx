@@ -3,12 +3,12 @@ import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { ArrayTable } from '../../components/common/ArrayTable';
 import { PurchaseOrder, ProductItem } from '../../../domain/models/purchase-order.model';
-import { OrderStatus } from '../../../domain/models/base.entity';
 import { PurchaseOrderServiceImpl } from '../../../domain/services/purchase-order.service.impl';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
+import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
 
 export function PurchaseOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -50,17 +50,6 @@ export function PurchaseOrderDetails() {
     loadData();
   }, []);
 
-  const getOrderStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
-    }
-  };
-
   const renderProducts = (orderProducts: ProductItem[]) => {
     const columns = [
       {
@@ -91,7 +80,7 @@ export function PurchaseOrderDetails() {
 
   const getFields = (order: PurchaseOrder) => [
     { label: 'Proveedor', value: suppliers[order.supplierId] || 'Proveedor no encontrado' },
-    { label: 'Estado', value: getOrderStatusLabel(order.status) },
+    { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
     { label: 'Productos', value: renderProducts(order.products) },
     { label: 'Total de Items', value: order.totalItems },

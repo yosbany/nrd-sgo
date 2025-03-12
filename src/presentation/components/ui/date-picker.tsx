@@ -2,7 +2,6 @@ import React from 'react';
 import { isValid, format } from 'date-fns';
 import { cn, formatDateToDisplay, formatDateToServer, parseDate } from '@/lib/utils';
 import { Calendar } from 'lucide-react';
-import { Button } from './button';
 
 interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
   label?: string;
@@ -37,8 +36,9 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       if (onChange) {
-        // Convertir la fecha seleccionada a formato ISO
-        const date = new Date(newValue);
+        // Convertir la fecha seleccionada a formato ISO preservando la fecha local
+        const [year, month, day] = newValue.split('-').map(Number);
+        const date = new Date(year, month - 1, day, 12); // Usar hora 12 para evitar problemas con zonas horarias
         onChange(date.toISOString());
       }
     };
@@ -51,30 +51,31 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
     };
 
     return (
-      <div className={cn("space-y-2", containerClassName)}>
+      <div className={cn("w-full space-y-2", containerClassName)}>
         {label && (
           <label 
             htmlFor={props.id || props.name}
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className="text-sm font-bold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             {label}
           </label>
         )}
         <div className="relative">
-          <Button
-            type="button"
-            variant="outline"
+          <div
+            onClick={handleClick}
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2",
+              "text-sm ring-offset-background cursor-pointer",
+              "hover:bg-accent hover:text-accent-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               !value && "text-muted-foreground",
-              error ? "border-red-500" : "",
+              error && "border-destructive focus-visible:ring-destructive",
               className
             )}
-            onClick={handleClick}
           >
-            <Calendar className="mr-2 h-4 w-4" />
+            <Calendar className="mr-2 h-4 w-4 opacity-50" />
             {displayValue || props.placeholder || 'Seleccione una fecha'}
-          </Button>
+          </div>
           <input
             {...props}
             type="date"
@@ -92,7 +93,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
           />
         </div>
         {error && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm font-medium text-destructive">
             {error}
           </p>
         )}

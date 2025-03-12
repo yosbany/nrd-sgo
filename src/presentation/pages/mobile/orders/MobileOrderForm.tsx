@@ -16,12 +16,12 @@ import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 import { ChevronDown, ChevronUp} from 'lucide-react';
 import { toast } from 'sonner';
-import { OrderStatus } from '@/domain/models/base.entity';
 import { format } from 'date-fns';
 import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 import { DatePicker } from '@/presentation/components/ui/date-picker';
+import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
 
 interface QuantityInputProps {
   value: number;
@@ -94,7 +94,7 @@ export const MobileOrderForm: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isGeneralOpen, setIsGeneralOpen] = React.useState(false);
+  const [isGeneralOpen, setIsGeneralOpen] = React.useState(!id);
   const [customers, setCustomers] = React.useState<Array<{ id: string; name: string }>>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
@@ -105,12 +105,40 @@ export const MobileOrderForm: React.FC = () => {
   const [recipeQuantity, setRecipeQuantity] = React.useState<number>(1);
   const [formData, setFormData] = React.useState<Partial<CustomerOrder>>({
     orderDate: new Date(),
-    status: OrderStatus.PENDING,
+    status: OrderStatus.PENDIENTE,
     customerId: '',
     products: [],
     recipes: []
   });
   const [filteredItems, setFilteredItems] = React.useState<Array<(Product | Recipe) & { type: 'product' | 'recipe' }>>([]);
+  const [searchTerm, setSearchTerm] = React.useState('');
+
+  const filterAndSortItems = React.useCallback((term: string) => {
+    if (!formData.customerId) {
+      setFilteredItems([]);
+      return;
+    }
+
+    // Primero las recetas, luego los productos
+    const filteredRecipes = recipes
+      .filter(recipe => recipe.name.toLowerCase().includes(term.toLowerCase()))
+      .map(item => ({ ...item, type: 'recipe' as const }));
+
+    const filteredProducts = products
+      .filter(product => product.name.toLowerCase().includes(term.toLowerCase()))
+      .map(item => ({ ...item, type: 'product' as const }));
+
+    // TODO: Ordenar basado en el historial del cliente
+    // Por ahora solo separamos recetas y productos
+    setFilteredItems([
+      ...filteredRecipes,
+      ...filteredProducts
+    ]);
+  }, [recipes, products, formData.customerId]);
+
+  React.useEffect(() => {
+    filterAndSortItems(searchTerm);
+  }, [filterAndSortItems, searchTerm, formData.customerId]);
 
   React.useEffect(() => {
     loadInitialData();
@@ -295,15 +323,12 @@ export const MobileOrderForm: React.FC = () => {
   };
 
   const getDateValue = () => {
-    if (formData.orderDate instanceof Date) {
-      return format(formData.orderDate, 'yyyy-MM-dd');
+    try {
+      return formData.orderDate ? format(formData.orderDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return format(new Date(), 'yyyy-MM-dd');
     }
-    const date = formData.orderDate 
-      ? new Date(formData.orderDate) 
-      : new Date();
-    return !isNaN(date.getTime()) 
-      ? format(date, 'yyyy-MM-dd')
-      : format(new Date(), 'yyyy-MM-dd');
   };
 
   if (isLoading) {
@@ -346,13 +371,13 @@ export const MobileOrderForm: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="orderDate" className="text-sm text-gray-600">FECHA DEL PEDIDO</Label>
                   <DatePicker
-                    label="FECHA DEL PEDIDO"
                     value={getDateValue()}
                     onChange={(value) => {
-                      const date = value ? new Date(value) : null;
+                      if (!value) return;
+                      const date = new Date(value);
                       setFormData(prev => ({
                         ...prev,
-                        orderDate: date || new Date()
+                        orderDate: date
                       }));
                     }}
                     className="w-full"
@@ -383,9 +408,17 @@ export const MobileOrderForm: React.FC = () => {
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as OrderStatus }))}
+                    disabled={!id}
                   >
-                    <option value={OrderStatus.PENDING}>Pendiente</option>
-                    <option value={OrderStatus.COMPLETED}>Completado</option>
+                    {id ? (
+                      Object.values(OrderStatus).map((status) => (
+                        <option key={status} value={status}>
+                          {OrderStatusLabel[status]}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={OrderStatus.PENDIENTE}>{OrderStatusLabel[OrderStatus.PENDIENTE]}</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -419,209 +452,182 @@ export const MobileOrderForm: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Buscar productos o recetas..."
-              className="w-full pl-9"
-              onChange={(e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const filteredProducts = products.filter(p => 
-                  p.name.toLowerCase().includes(searchTerm)
-                );
-                const filteredRecipes = recipes.filter(r => 
-                  r.name.toLowerCase().includes(searchTerm)
-                );
-                setFilteredItems([
-                  ...filteredRecipes.map(item => ({ ...item, type: 'recipe' as const })),
-                  ...filteredProducts.map(item => ({ ...item, type: 'product' as const }))
-                ]);
-              }}
-            />
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
-              fill="none"
-              height="24"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            {filteredItems.map(item => {
-              const isRecipe = item.type === 'recipe';
-              const existingItem = isRecipe 
-                ? formData.recipes?.find(r => r.recipeId === item.id)
-                : formData.products?.find(p => p.productId === item.id);
-
-              return (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
-                    existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
-                  }`}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).tagName === 'INPUT') {
-                      return;
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    if (existingItem) {
-                      if (isRecipe) {
-                        handleRemoveRecipe(
-                          formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
-                        );
-                      } else {
-                        handleRemoveProduct(
-                          formData.products?.findIndex(p => p.productId === item.id) || 0
-                        );
-                      }
-                    } else {
-                      if (isRecipe) {
-                        setSelectedRecipe(item.id);
-                        setRecipeQuantity(1);
-                        handleAddRecipe();
-                      } else {
-                        setSelectedProduct(item.id);
-                        setProductQuantity(1);
-                        handleAddProduct();
-                      }
-                    }
-                  }}
+          {!formData.customerId ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Seleccione un cliente para ver los productos y recetas disponibles</p>
+            </div>
+          ) : (
+            <>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Buscar productos o recetas..."
+                  className="w-full pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <div className="p-4">
-                    <span className={`absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg ${
-                      isRecipe ? 'bg-blue-500' : 'bg-purple-500'
-                    }`}>
-                      {isRecipe ? 'R' : 'P'}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={existingItem !== undefined}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            if (isRecipe) {
-                              setSelectedRecipe(item.id);
-                              setRecipeQuantity(1);
-                              handleAddRecipe();
-                            } else {
-                              setSelectedProduct(item.id);
-                              setProductQuantity(1);
-                              handleAddProduct();
-                            }
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {filteredItems.map(item => {
+                  const isRecipe = item.type === 'recipe';
+                  const existingItem = isRecipe 
+                    ? formData.recipes?.find(r => r.recipeId === item.id)
+                    : formData.products?.find(p => p.productId === item.id);
+
+                  return (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
+                        existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
+                      }`}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).tagName === 'INPUT') {
+                          return;
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (existingItem) {
+                          if (isRecipe) {
+                            handleRemoveRecipe(
+                              formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                            );
                           } else {
-                            if (isRecipe) {
-                              handleRemoveRecipe(
-                                formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
-                              );
-                            } else {
-                              handleRemoveProduct(
-                                formData.products?.findIndex(p => p.productId === item.id) || 0
-                              );
-                            }
+                            handleRemoveProduct(
+                              formData.products?.findIndex(p => p.productId === item.id) || 0
+                            );
                           }
-                        }}
-                        className="h-5 w-5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (existingItem) {
-                            if (isRecipe) {
-                              handleRemoveRecipe(
-                                formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
-                              );
-                            } else {
-                              handleRemoveProduct(
-                                formData.products?.findIndex(p => p.productId === item.id) || 0
-                              );
-                            }
+                        } else {
+                          if (isRecipe) {
+                            setSelectedRecipe(item.id);
+                            setRecipeQuantity(1);
+                            handleAddRecipe();
                           } else {
-                            if (isRecipe) {
-                              setSelectedRecipe(item.id);
-                              setRecipeQuantity(1);
-                              handleAddRecipe();
-                            } else {
-                              setSelectedProduct(item.id);
-                              setProductQuantity(1);
-                              handleAddProduct();
-                            }
+                            setSelectedProduct(item.id);
+                            setProductQuantity(1);
+                            handleAddProduct();
                           }
-                        }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-base">{item.name}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {existingItem && (
-                      <div className="mt-3">
-                        <div className="ml-8 space-y-2">
-                          <QuantityInput
-                            value={existingItem.quantity}
-                            unit={isRecipe 
-                              ? units.find(u => u.id === (item as Recipe).yieldUnitId)
-                              : units.find(u => u.id === (item as Product).salesUnitId)}
-                            onQuantityChange={(value) => {
-                              if (isRecipe) {
-                                const updatedRecipes = [...(formData.recipes || [])];
-                                const index = updatedRecipes.findIndex(r => r.recipeId === item.id);
-                                if (index >= 0) {
-                                  updatedRecipes[index].quantity = value;
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    recipes: updatedRecipes
-                                  }));
+                        }
+                      }}
+                    >
+                      <div className="p-4">
+                        <span className={`absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg ${
+                          isRecipe ? 'bg-blue-500' : 'bg-purple-500'
+                        }`}>
+                          {isRecipe ? 'R' : 'P'}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={existingItem !== undefined}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                if (isRecipe) {
+                                  setSelectedRecipe(item.id);
+                                  setRecipeQuantity(1);
+                                  handleAddRecipe();
+                                } else {
+                                  setSelectedProduct(item.id);
+                                  setProductQuantity(1);
+                                  handleAddProduct();
                                 }
                               } else {
-                                const updatedProducts = [...(formData.products || [])];
-                                const index = updatedProducts.findIndex(p => p.productId === item.id);
-                                if (index >= 0) {
-                                  updatedProducts[index].quantity = value;
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    products: updatedProducts
-                                  }));
+                                if (isRecipe) {
+                                  handleRemoveRecipe(
+                                    formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                                  );
+                                } else {
+                                  handleRemoveProduct(
+                                    formData.products?.findIndex(p => p.productId === item.id) || 0
+                                  );
                                 }
                               }
                             }}
+                            className="h-5 w-5"
                           />
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Costo unitario:</span>
-                            <span className="font-medium">
-                              ${isRecipe 
-                                ? (item as Recipe).cost.toFixed(2)
-                                : ((item as Product).purchasePrice || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Total:</span>
-                            <span className="font-semibold text-blue-600">
-                              ${isRecipe 
-                                ? ((item as Recipe).cost * existingItem.quantity).toFixed(2)
-                                : (((item as Product).purchasePrice || 0) * existingItem.quantity).toFixed(2)}
-                            </span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-base">{item.name}</span>
+                            </div>
                           </div>
                         </div>
+                        {existingItem && (
+                          <div className="mt-3">
+                            <div className="ml-8 space-y-2">
+                              <QuantityInput
+                                value={existingItem.quantity}
+                                unit={isRecipe 
+                                  ? units.find(u => u.id === (item as Recipe).yieldUnitId)
+                                  : units.find(u => u.id === (item as Product).salesUnitId)}
+                                onQuantityChange={(value) => {
+                                  if (isRecipe) {
+                                    const updatedRecipes = [...(formData.recipes || [])];
+                                    const index = updatedRecipes.findIndex(r => r.recipeId === item.id);
+                                    if (index >= 0) {
+                                      updatedRecipes[index].quantity = value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        recipes: updatedRecipes
+                                      }));
+                                    }
+                                  } else {
+                                    const updatedProducts = [...(formData.products || [])];
+                                    const index = updatedProducts.findIndex(p => p.productId === item.id);
+                                    if (index >= 0) {
+                                      updatedProducts[index].quantity = value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        products: updatedProducts
+                                      }));
+                                    }
+                                  }
+                                }}
+                              />
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Costo unitario:</span>
+                                <span className="font-medium">
+                                  ${isRecipe 
+                                    ? (item as Recipe).cost.toFixed(2)
+                                    : ((item as Product).purchasePrice || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Total:</span>
+                                <span className="font-semibold text-blue-600">
+                                  ${isRecipe 
+                                    ? ((item as Recipe).cost * existingItem.quantity).toFixed(2)
+                                    : (((item as Product).purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-          {recipes.length === 0 && products.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay items disponibles</p>
-            </div>
+              {filteredItems.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No hay items disponibles que coincidan con la búsqueda</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -636,7 +642,7 @@ export const MobileOrderForm: React.FC = () => {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => navigate(-1)}
               disabled={isSaving}
               className="h-11"

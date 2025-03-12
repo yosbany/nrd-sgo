@@ -6,11 +6,14 @@ import { CustomerOrderServiceImpl } from '../../../domain/services/customer-orde
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatus } from '@/domain/models/order-status.enum';
 
 export function CustomerOrderForm() {
   const { id } = useParams<{ id: string }>();
-  const [order, setOrder] = React.useState<Partial<CustomerOrder>>({});
+  const [order, setOrder] = React.useState<Partial<CustomerOrder>>({
+    orderDate: new Date(),
+    status: OrderStatus.PENDIENTE,
+  });
   const orderService = new CustomerOrderServiceImpl();
 
   React.useEffect(() => {
@@ -37,16 +40,18 @@ export function CustomerOrderForm() {
       label: 'Fecha',
       type: 'date' as const,
       required: true,
+      readOnly: true,
     },
     {
       name: 'status',
       label: 'Estado',
       type: 'select' as const,
       required: true,
-      options: [
-        { value: OrderStatus.PENDING, label: 'Pendiente' },
-        { value: OrderStatus.COMPLETED, label: 'Completada' }
-      ],
+      readOnly: !id,
+      options: Object.values(OrderStatus).map(status => ({
+        value: status,
+        label: status
+      })),
     },
     {
       name: 'recipes',

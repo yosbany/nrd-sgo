@@ -14,11 +14,11 @@ import { PurchaseOrderServiceImpl } from '@/domain/services/purchase-order.servi
 import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Eye, Pencil, Trash2, MessageCircle } from 'lucide-react';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { Plus } from 'lucide-react';
 import { Supplier } from '@/domain/models/supplier.model';
 import { OrderActions } from '@/presentation/components/OrderActions';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
+import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
 
 export const MobilePurchases: React.FC = () => {
   const [orders, setOrders] = React.useState<PurchaseOrder[]>([]);
@@ -55,35 +55,30 @@ export const MobilePurchases: React.FC = () => {
     }
   };
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | { seconds: number, nanoseconds: number }) => {
     try {
-      const dateObj = typeof date === 'string' ? parseISO(date) : date;
-      return format(dateObj, 'PPP', { locale: es });
+      if (!date) return 'Fecha no disponible';
+
+      let dateObj: Date;
+
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string') {
+        dateObj = parseISO(date);
+      } else if (typeof date === 'object' && 'seconds' in date) {
+        dateObj = new Date(date.seconds * 1000);
+      } else {
+        throw new Error('Invalid date format');
+      }
+
+      if (!isNaN(dateObj.getTime())) {
+        return format(dateObj, 'PPP', { locale: es });
+      }
+      
+      return 'Fecha inválida';
     } catch (error) {
       console.error('Error formatting date:', error);
       return 'Fecha no disponible';
-    }
-  };
-
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'text-yellow-500 bg-yellow-500/10';
-      case OrderStatus.COMPLETED:
-        return 'text-green-500 bg-green-500/10';
-      default:
-        return 'text-gray-500 bg-gray-500/10';
-    }
-  };
-
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
     }
   };
 
@@ -156,7 +151,7 @@ export const MobilePurchases: React.FC = () => {
                           </span>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
+                          {OrderStatusLabel[order.status]}
                         </span>
                       </div>
 

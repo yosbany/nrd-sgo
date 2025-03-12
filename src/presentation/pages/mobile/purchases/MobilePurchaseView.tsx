@@ -7,7 +7,7 @@ import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
 
 export const MobilePurchaseView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,28 +67,6 @@ export const MobilePurchaseView: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'text-yellow-500 bg-yellow-500/10';
-      case OrderStatus.COMPLETED:
-        return 'text-green-500 bg-green-500/10';
-      default:
-        return 'text-gray-500 bg-gray-500/10';
-    }
-  };
-
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
-    }
-  };
-
   const getSupplierName = (supplierId: string) => {
     const supplier = suppliers.find(s => s.id === supplierId);
     return supplier?.commercialName || 'No asignado';
@@ -125,7 +103,7 @@ export const MobilePurchaseView: React.FC = () => {
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Estado</span>
             <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-              {getStatusLabel(order.status)}
+              {OrderStatusLabel[order.status]}
             </span>
           </div>
           <div className="flex justify-between">

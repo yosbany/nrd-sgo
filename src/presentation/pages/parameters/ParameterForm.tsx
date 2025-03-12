@@ -25,6 +25,12 @@ export function ParameterForm() {
       required: true,
     },
     {
+      name: 'code',
+      label: 'Código',
+      type: 'text' as const,
+      required: true,
+    },
+    {
       name: 'value',
       label: 'Valor',
       type: 'text' as const,

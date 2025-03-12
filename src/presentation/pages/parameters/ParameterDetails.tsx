@@ -10,6 +10,7 @@ export function ParameterDetails() {
 
   const getFields = (parameter: Parameter) => [
     { label: 'Nombre', value: parameter.name },
+    { label: 'Código', value: parameter.code },
     { label: 'Valor', value: parameter.value },
     { label: 'Descripción', value: parameter.description || '-' },
   ];

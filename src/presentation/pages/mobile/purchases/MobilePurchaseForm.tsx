@@ -15,32 +15,51 @@ import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { OrderStatus } from '@/domain/models/base.entity';
 import { format } from 'date-fns';
-import { Supplier } from '@/domain/models/supplier.model';
 import { Product } from '@/domain/models/product.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 import { QuantityInput } from '@/presentation/components/QuantityInput';
 import { DatePicker } from '@/presentation/components/ui/date-picker';
+import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
 
 export const MobilePurchaseForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isGeneralOpen, setIsGeneralOpen] = React.useState(false);
+  const [isGeneralOpen, setIsGeneralOpen] = React.useState(!id);
   const [suppliers, setSuppliers] = React.useState<Array<{ id: string; commercialName: string }>>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [units, setUnits] = React.useState<Array<{ id: string; symbol: string; name: string }>>([]);
   const [selectedProduct, setSelectedProduct] = React.useState<string>('');
   const [quantity, setQuantity] = React.useState<number>(1);
   const [filteredProducts, setFilteredProducts] = React.useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = React.useState('');
   const [formData, setFormData] = React.useState<Partial<PurchaseOrder>>({
     orderDate: new Date(),
-    status: OrderStatus.PENDING,
+    status: OrderStatus.PENDIENTE,
     supplierId: '',
     products: []
   });
+
+  const filterProducts = React.useCallback((term: string) => {
+    if (!formData.supplierId) {
+      setFilteredProducts([]);
+      return;
+    }
+
+    const filtered = products
+      .filter(product => 
+        product.primarySupplierId === formData.supplierId && 
+        product.name.toLowerCase().includes(term.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setFilteredProducts(filtered);
+  }, [products, formData.supplierId]);
+
+  React.useEffect(() => {
+    filterProducts(searchTerm);
+  }, [filterProducts, searchTerm, formData.supplierId]);
 
   React.useEffect(() => {
     loadInitialData();
@@ -60,17 +79,18 @@ export const MobilePurchaseForm: React.FC = () => {
       })));
       setProducts(productsData);
       setUnits(unitsData);
-      setFilteredProducts(productsData);
 
       if (id) {
         const orderService = new PurchaseOrderServiceImpl();
         const orderData = await orderService.findById(id);
         if (orderData) {
+          const orderDate = orderData.orderDate instanceof Date 
+            ? orderData.orderDate 
+            : new Date(orderData.orderDate);
+
           setFormData({
             ...orderData,
-            orderDate: orderData.orderDate instanceof Date 
-              ? orderData.orderDate 
-              : new Date(orderData.orderDate)
+            orderDate: isNaN(orderDate.getTime()) ? new Date() : orderDate
           });
         }
       }
@@ -144,9 +164,7 @@ export const MobilePurchaseForm: React.FC = () => {
       const orderService = new PurchaseOrderServiceImpl();
       const orderToSave = {
         ...formData,
-        orderDate: formData.orderDate instanceof Date 
-          ? formData.orderDate 
-          : new Date(formData.orderDate || new Date())
+        orderDate: formData.orderDate || new Date()
       };
 
       if (id) {
@@ -162,6 +180,23 @@ export const MobilePurchaseForm: React.FC = () => {
       toast.error('Error al guardar la orden');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const getDateValue = () => {
+    try {
+      if (!formData.orderDate) return format(new Date(), 'yyyy-MM-dd');
+      
+      const date = formData.orderDate instanceof Date 
+        ? formData.orderDate 
+        : new Date(formData.orderDate);
+
+      return isNaN(date.getTime()) 
+        ? format(new Date(), 'yyyy-MM-dd') 
+        : format(date, 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return format(new Date(), 'yyyy-MM-dd');
     }
   };
 
@@ -205,19 +240,15 @@ export const MobilePurchaseForm: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="orderDate" className="text-sm text-gray-600">Fecha de Orden</Label>
                   <DatePicker
-                    label="FECHA DE COMPRA"
-                    value={(() => {
-                      if (formData.orderDate instanceof Date) {
-                        return format(formData.orderDate, 'yyyy-MM-dd');
-                      }
-                      return formData.orderDate
-                        ? format(formData.orderDate, 'yyyy-MM-dd')
-                        : format(new Date(formData.orderDate || new Date()), 'yyyy-MM-dd');
-                    })()}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      orderDate: e.target.value ? new Date(e.target.value) : new Date()
-                    }))}
+                    value={getDateValue()}
+                    onChange={(value) => {
+                      if (!value) return;
+                      const date = new Date(value);
+                      setFormData(prev => ({
+                        ...prev,
+                        orderDate: date
+                      }));
+                    }}
                     className="w-full"
                   />
                 </div>
@@ -246,9 +277,17 @@ export const MobilePurchaseForm: React.FC = () => {
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as OrderStatus }))}
+                    disabled={!id}
                   >
-                    <option value={OrderStatus.PENDING}>Pendiente</option>
-                    <option value={OrderStatus.COMPLETED}>Completado</option>
+                    {id ? (
+                      Object.values(OrderStatus).map((status) => (
+                        <option key={status} value={status}>
+                          {OrderStatusLabel[status]}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={OrderStatus.PENDIENTE}>{OrderStatusLabel[OrderStatus.PENDIENTE]}</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -273,132 +312,135 @@ export const MobilePurchaseForm: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Buscar productos..."
-              className="w-full pl-9"
-              onChange={(e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                setFilteredProducts(
-                  products.filter(p => p.name.toLowerCase().includes(searchTerm))
-                );
-              }}
-            />
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
-              fill="none"
-              height="24"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            {filteredProducts.map(item => {
-              const existingItem = formData.products?.find(p => p.productId === item.id);
-
-              return (
-                <div
-                  key={item.id}
-                  className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
-                    existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
-                  }`}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).tagName === 'INPUT') {
-                      return;
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    if (existingItem) {
-                      handleRemoveProduct(
-                        formData.products?.findIndex(p => p.productId === item.id) || 0
-                      );
-                    } else {
-                      setSelectedProduct(item.id);
-                      setQuantity(1);
-                      handleAddProduct();
-                    }
-                  }}
+          {!formData.supplierId ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Seleccione un proveedor para ver los productos disponibles</p>
+            </div>
+          ) : (
+            <>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Buscar productos..."
+                  className="w-full pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <div className="p-4">
-                    <span className="absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg bg-purple-500">
-                      P
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={existingItem !== undefined}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedProduct(item.id);
-                            setQuantity(1);
-                            handleAddProduct();
-                          } else {
-                            handleRemoveProduct(
-                              formData.products?.findIndex(p => p.productId === item.id) || 0
-                            );
-                          }
-                        }}
-                        className="h-5 w-5"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-base">{item.name}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {existingItem && (
-                      <div className="mt-3">
-                        <div className="ml-8 space-y-2">
-                          <QuantityInput
-                            value={existingItem.quantity}
-                            unit={units.find(u => u.id === item.purchaseUnitId)}
-                            onQuantityChange={(value) => {
-                              const updatedProducts = [...(formData.products || [])];
-                              const index = updatedProducts.findIndex(p => p.productId === item.id);
-                              if (index >= 0) {
-                                updatedProducts[index].quantity = value;
-                                setFormData(prev => ({
-                                  ...prev,
-                                  products: updatedProducts
-                                }));
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {filteredProducts.map(item => {
+                  const existingItem = formData.products?.find(p => p.productId === item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`w-full bg-white rounded-lg border shadow-sm cursor-pointer transition-all relative ${
+                        existingItem ? 'border-primary ring-1 ring-primary' : 'hover:bg-gray-50/50'
+                      }`}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).tagName === 'INPUT') {
+                          return;
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (existingItem) {
+                          handleRemoveProduct(
+                            formData.products?.findIndex(p => p.productId === item.id) || 0
+                          );
+                        } else {
+                          setSelectedProduct(item.id);
+                          setQuantity(1);
+                          handleAddProduct();
+                        }
+                      }}
+                    >
+                      <div className="p-4">
+                        <span className="absolute top-0 right-0 w-6 h-6 flex items-center justify-center text-xs font-medium text-white rounded-bl-lg bg-purple-500">
+                          P
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={existingItem !== undefined}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedProduct(item.id);
+                                setQuantity(1);
+                                handleAddProduct();
+                              } else {
+                                handleRemoveProduct(
+                                  formData.products?.findIndex(p => p.productId === item.id) || 0
+                                );
                               }
                             }}
+                            className="h-5 w-5"
                           />
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Costo unitario:</span>
-                            <span className="font-medium">
-                              ${(item.purchasePrice || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Total:</span>
-                            <span className="font-semibold text-blue-600">
-                              ${((item.purchasePrice || 0) * existingItem.quantity).toFixed(2)}
-                            </span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-base">{item.name}</span>
+                            </div>
                           </div>
                         </div>
+                        {existingItem && (
+                          <div className="mt-3">
+                            <div className="ml-8 space-y-2">
+                              <QuantityInput
+                                value={existingItem.quantity}
+                                unit={units.find(u => u.id === item.purchaseUnitId)}
+                                onQuantityChange={(value) => {
+                                  const updatedProducts = [...(formData.products || [])];
+                                  const index = updatedProducts.findIndex(p => p.productId === item.id);
+                                  if (index >= 0) {
+                                    updatedProducts[index].quantity = value;
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      products: updatedProducts
+                                    }));
+                                  }
+                                }}
+                              />
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Costo unitario:</span>
+                                <span className="font-medium">
+                                  ${(item.purchasePrice || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Total:</span>
+                                <span className="font-semibold text-blue-600">
+                                  ${((item.purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-          {products.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay productos disponibles</p>
-            </div>
+              {filteredProducts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No hay productos disponibles para este proveedor</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -413,7 +455,7 @@ export const MobilePurchaseForm: React.FC = () => {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => navigate(-1)}
               disabled={isSaving}
               className="h-11"

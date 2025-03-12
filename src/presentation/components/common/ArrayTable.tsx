@@ -7,39 +7,61 @@ interface ArrayTableProps<T> {
     accessor: keyof T | ((item: T) => React.ReactNode);
   }[];
   emptyMessage?: string;
+  title?: string;
 }
 
-export function ArrayTable<T>({ data, columns, emptyMessage = 'No hay datos' }: ArrayTableProps<T>) {
-  if (!data?.length) return <div className="text-muted-foreground">{emptyMessage}</div>;
+export function ArrayTable<T>({ 
+  data, 
+  columns, 
+  title = 'Registros',
+  emptyMessage 
+}: ArrayTableProps<T>) {
+  if (!data?.length) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-base font-bold text-muted-foreground whitespace-nowrap">
+          {title}:
+        </span>
+        <span className="text-base font-medium text-muted-foreground">
+          No hay registros
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-md border">
-      <div className="relative w-full overflow-auto">
-        <table className="w-full caption-bottom text-sm">
-          <thead>
-            <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-              {columns.map((column, index) => (
-                <th key={index} className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                  {column.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item, rowIndex) => (
-              <tr key={rowIndex} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                {columns.map((column, colIndex) => (
-                  <td key={colIndex} className="p-4 align-middle">
-                    {typeof column.accessor === 'function'
-                      ? column.accessor(item)
-                      : <div className="font-medium">{String(item[column.accessor])}</div>
-                    }
-                  </td>
+    <div className="space-y-2">
+      <div className="text-base font-bold text-muted-foreground whitespace-nowrap">
+        {title}:
+      </div>
+      <div className="rounded-md border">
+        <div className="relative w-full overflow-auto">
+          <table className="w-full caption-bottom text-sm">
+            <thead>
+              <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                {columns.map((column, index) => (
+                  <th key={index} className="h-9 px-3 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {column.header}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.map((item, rowIndex) => (
+                <tr key={rowIndex} className="border-b last:border-b-0 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                  {columns.map((column, colIndex) => (
+                    <td key={colIndex} className="p-2 align-middle">
+                      {typeof column.accessor === 'function'
+                        ? column.accessor(item)
+                        : <div className="font-medium">{String(item[column.accessor])}</div>
+                      }
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

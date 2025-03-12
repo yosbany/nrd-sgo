@@ -5,7 +5,7 @@ import { ProductionOrder } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatusLabel } from '@/domain/models/order-status.enum';
 
 export function ProductionOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -38,17 +38,7 @@ export function ProductionOrderDetails() {
     loadData();
   }, []);
 
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completada';
-      default:
-        return status;
-    }
-  };
-
+  
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('es-CL', {
       year: 'numeric',
@@ -60,47 +50,51 @@ export function ProductionOrderDetails() {
   const renderRecipes = (orderRecipes: ProductionOrder['recipes']) => {
     if (!orderRecipes?.length) return 'No hay recetas';
     return (
-      <>
-        {orderRecipes.map((recipe, index) => (
-          <tr key={index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-            <td className="p-4 align-middle">
-              <div className="font-medium">
-                {recipes[recipe.recipeId] || 'Receta no encontrada'}
-              </div>
-            </td>
-            <td className="p-4 align-middle text-muted-foreground">
-              Cantidad: {recipe.quantity}
-            </td>
-          </tr>
-        ))}
-      </>
+      <table className="w-full">
+        <tbody>
+          {orderRecipes.map((recipe, index) => (
+            <tr key={index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+              <td className="p-4 align-middle">
+                <div className="font-medium">
+                  {recipes[recipe.recipeId] || 'Receta no encontrada'}
+                </div>
+              </td>
+              <td className="p-4 align-middle text-muted-foreground">
+                Cantidad: {recipe.quantity}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     );
   };
 
   const renderRatios = (ratios: ProductionOrder['ratios']) => {
     if (!ratios?.length) return 'No hay ratios definidos';
     return (
-      <>
-        {ratios.map((ratio, index) => (
-          <tr key={index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-            <td className="p-4 align-middle">
-              <div className="font-medium">
-                {ratio.name}
-              </div>
-            </td>
-            <td className="p-4 align-middle text-muted-foreground">
-              Valor: {ratio.value || 'No especificado'}
-            </td>
-          </tr>
-        ))}
-      </>
+      <table className="w-full">
+        <tbody>
+          {ratios.map((ratio, index) => (
+            <tr key={index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+              <td className="p-4 align-middle">
+                <div className="font-medium">
+                  {ratio.name}
+                </div>
+              </td>
+              <td className="p-4 align-middle text-muted-foreground">
+                Valor: {ratio.value || 'No especificado'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     );
   };
 
   const getFields = (order: ProductionOrder) => [
     { label: 'Trabajador Responsable', value: workers[order.responsibleWorkerId] || 'Trabajador no encontrado' },
     { label: 'Fecha de Producción', value: formatDate(order.orderDate) },
-    { label: 'Estado', value: getStatusLabel(order.status) },
+    { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Recetas', value: order.recipes?.length ? renderRecipes(order.recipes) : 'No hay recetas' },
     { label: 'Ratios de Producción', value: order.ratios?.length ? renderRatios(order.ratios) : 'No hay ratios definidos' },
   ];

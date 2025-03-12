@@ -1,4 +1,3 @@
-import React from 'react';
 import { GenericList } from '../../components/common/GenericList';
 import { DailyClosure } from '../../../domain/models/daily-closure.model';
 import { DailyClosureServiceImpl } from '../../../domain/services/daily-closure.service.impl';
@@ -30,7 +29,7 @@ export function DailyClosureList() {
     {
       header: 'Cuentas',
       accessor: 'accounts' as keyof DailyClosure,
-      render: (item: DailyClosure) => item.accounts.length,
+      render: (item: DailyClosure) => item.accounts?.length || 0,
     },
     {
       header: 'Transacciones',

@@ -1,4 +1,5 @@
-import { BaseEntity, OrderStatus } from './base.entity';
+import { BaseEntity } from './base.entity';
+import { OrderStatus } from './order-status.enum';
 
 export interface ProductItem {
   productId?: string;

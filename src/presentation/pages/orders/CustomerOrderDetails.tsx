@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { ArrayTable } from '../../components/common/ArrayTable';
 import { CustomerOrder, ProductItem, RecipeItems } from '../../../domain/models/customer-order.model';
-import { OrderStatus } from '../../../domain/models/base.entity';
 import { CustomerOrderServiceImpl } from '../../../domain/services/customer-order.service.impl';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
@@ -11,6 +10,7 @@ import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl'
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
 import { Recipe } from '../../../domain/models/recipe.model';
+import { OrderStatusLabel } from '@/domain/models/order-status.enum';
 
 export function CustomerOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -61,17 +61,7 @@ export function CustomerOrderDetails() {
     loadData();
   }, []);
 
-  const getOrderStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case OrderStatus.PENDING:
-        return 'Pendiente';
-      case OrderStatus.COMPLETED:
-        return 'Completado';
-      default:
-        return status;
-    }
-  };
-
+  
   const renderProducts = (orderProducts: ProductItem[]) => {
     const columns = [
       {
@@ -124,7 +114,7 @@ export function CustomerOrderDetails() {
 
   const getFields = (order: CustomerOrder) => [
     { label: 'Cliente', value: customers[order.customerId] || 'Cliente no encontrado' },
-    { label: 'Estado', value: getOrderStatusLabel(order.status) },
+    { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
     { label: 'Productos', value: renderProducts(order.products) },
     { label: 'Recetas', value: renderRecipes(order.recipes) },

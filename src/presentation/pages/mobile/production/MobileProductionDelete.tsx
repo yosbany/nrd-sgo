@@ -87,7 +87,7 @@ export const MobileProductionDelete: React.FC = () => {
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <Button
-            variant="destructive"
+            variant="danger"
             className="w-full"
             onClick={handleDelete}
             disabled={isDeleting}
@@ -95,7 +95,7 @@ export const MobileProductionDelete: React.FC = () => {
             {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
           </Button>
           <Button
-            variant="outline"
+            variant="secondary"
             className="w-full"
             onClick={() => navigate(-1)}
             disabled={isDeleting}

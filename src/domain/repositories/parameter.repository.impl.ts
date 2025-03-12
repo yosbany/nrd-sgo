@@ -6,6 +6,7 @@ import { BaseRepositoryImpl } from './base.repository.impl';
 export class ParameterRepositoryImpl extends BaseRepositoryImpl<Parameter> implements IParameterRepository {
   protected modelProperties: (keyof Parameter)[] = [
     'name',
+    'code',
     'value',
     'description'
   ];
@@ -18,4 +19,7 @@ export class ParameterRepositoryImpl extends BaseRepositoryImpl<Parameter> imple
     return this.findByField('name', name);
   }
 
+  async findByCode(code: string): Promise<Parameter[]> {
+    return this.findByField('code', code);
+  }
 } 

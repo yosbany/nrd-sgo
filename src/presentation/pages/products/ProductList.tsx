@@ -9,9 +9,14 @@ export function ProductList() {
     { header: 'SKU', accessor: 'sku' as keyof Product },
     { header: 'Nombre', accessor: 'name' as keyof Product },
     {
-      header: 'Precio de Venta',
-      accessor: 'salePrice' as keyof Product,
-      render: (item: Product) => item.salePrice ? `$${item.salePrice.toFixed(2)}` : 'N/A',
+      header: 'Tipo',
+      accessor: 'isMaterial' as keyof Product,
+      render: (item: Product) => {
+        if (item.isMaterial && item.isForSale) return 'Material y Venta';
+        if (item.isMaterial) return 'Material';
+        if (item.isForSale) return 'Venta';
+        return '';
+      }
     },
     {
       header: 'Estado',
@@ -29,16 +34,6 @@ export function ProductList() {
           color: 'secondary' as const 
         }
       ]
-    },
-    {
-      header: 'Tipo',
-      accessor: 'isMaterial' as keyof Product,
-      render: (item: Product) => {
-        if (item.isMaterial && item.isForSale) return 'Material y Venta';
-        if (item.isMaterial) return 'Material';
-        if (item.isForSale) return 'Venta';
-        return 'N/A';
-      }
     },
   ];
 

@@ -4,7 +4,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { Plus, Pencil, Trash2, Eye, Search, Printer } from 'lucide-react';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
-import { BaseEntity, OrderStatus } from '@/domain/models/base.entity';
+import { BaseEntity } from '@/domain/models/base.entity';
 import { toast } from 'sonner';
 import { Input } from '@/presentation/components/ui/input';
 import { formatDateToDisplay } from '@/lib/utils';
@@ -42,6 +42,7 @@ interface GenericListProps<T extends BaseEntity> {
   customerName?: Record<string, string>;
   workerName?: Record<string, string>;
   supplierName?: Record<string, string>;
+  units?: Record<string, string>;
 }
 
 const Tag: React.FC<{ config: TagConfig }> = ({ config }) => {
@@ -86,6 +87,7 @@ export function GenericList<T extends BaseEntity>({
   customerName,
   workerName,
   supplierName,
+  units,
 }: GenericListProps<T>) {
   const [items, setItems] = React.useState<T[]>([]);
   const [filteredItems, setFilteredItems] = React.useState<T[]>([]);
@@ -166,6 +168,7 @@ export function GenericList<T extends BaseEntity>({
     const text = new OrderTextFormatter({
       order,
       type,
+      units: Object.entries(units || {}).map(([id, name]) => ({ id, name: name as string })),
       customerName: type === 'customer' && customerName ? customerName[(order as CustomerOrder).customerId] : undefined,
       workerName: type === 'production' && workerName ? workerName[(order as ProductionOrder).responsibleWorkerId] : undefined,
       supplierName: type === 'purchase' && supplierName ? supplierName[(order as PurchaseOrder).supplierId] : undefined,

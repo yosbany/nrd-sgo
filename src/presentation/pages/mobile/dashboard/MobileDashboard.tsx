@@ -5,7 +5,7 @@ import { FaShoppingCart, FaClipboardList, FaIndustry } from 'react-icons/fa';
 import { CustomerOrderServiceImpl } from '@/domain/services/customer-order.service.impl';
 import { ProductionOrderServiceImpl } from '@/domain/services/production-order.service.impl';
 import { PurchaseOrderServiceImpl } from '@/domain/services/purchase-order.service.impl';
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatus } from '@/domain/models/order-status.enum';
 
 
 export const MobileDashboard: React.FC = () => {
@@ -28,9 +28,9 @@ export const MobileDashboard: React.FC = () => {
       const purchaseOrderService = new PurchaseOrderServiceImpl();
 
       const [customerOrders, productionOrders, purchaseOrders] = await Promise.all([
-        customerOrderService.findByStatus(OrderStatus.PENDING),
-        productionOrderService.findByStatus(OrderStatus.PENDING),
-        purchaseOrderService.findByStatus(OrderStatus.PENDING)
+        customerOrderService.findByStatus(OrderStatus.PENDIENTE),
+        productionOrderService.findByStatus(OrderStatus.PENDIENTE),
+        purchaseOrderService.findByStatus(OrderStatus.PENDIENTE)
       ]);
 
       setOrderCounts({

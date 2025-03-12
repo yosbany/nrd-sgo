@@ -3,4 +3,5 @@ import { IBaseService } from './base.service.interface';
 
 export interface IParameterService extends IBaseService<Parameter> {
   findByName(name: string): Promise<Parameter[]>;
+  findByCode(code: string): Promise<Parameter[]>;
 } 
