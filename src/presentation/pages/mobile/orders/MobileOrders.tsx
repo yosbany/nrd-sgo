@@ -18,14 +18,19 @@ import { Plus } from 'lucide-react';
 import { OrderActions } from '@/presentation/components/OrderActions';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
-import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
+import { NewOrderModal } from '@/presentation/components/orders/NewOrderModal';
+import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
+import { Supplier } from '@/domain/models/supplier.model';
 
 export const MobileOrders: React.FC = () => {
   const [orders, setOrders] = React.useState<CustomerOrder[]>([]);
   const [customers, setCustomers] = React.useState<Array<{ id: string; name: string; phone?: string }>>([]);
   const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
   const [recipes, setRecipes] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
   const navigate = useNavigate();
   const orderService = new CustomerOrderServiceImpl();
 
@@ -35,11 +40,12 @@ export const MobileOrders: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [ordersData, customersData, productsData, recipesData] = await Promise.all([
+      const [ordersData, customersData, productsData, recipesData, suppliersData] = await Promise.all([
         orderService.findAll(),
         new CustomerServiceImpl().findAll(),
         new ProductServiceImpl().findAll(),
-        new RecipeServiceImpl().findAll()
+        new RecipeServiceImpl().findAll(),
+        new SupplierServiceImpl().findAll()
       ]);
       
       // Ordenar por fecha de más reciente a más antigua
@@ -53,6 +59,7 @@ export const MobileOrders: React.FC = () => {
       setCustomers(customersData);
       setProducts(productsData);
       setRecipes(recipesData);
+      setSuppliers(suppliersData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -122,6 +129,18 @@ export const MobileOrders: React.FC = () => {
     }
   };
 
+  const handleCreateEmpty = () => {
+    navigate('/mobile/orders/new');
+  };
+
+  const handleCreateFromCopy = (orderId: string) => {
+    navigate(`/mobile/orders/new?copy=${orderId}`);
+  };
+
+  const handleCreateCalculated = (supplierId: string) => {
+    navigate(`/mobile/orders/new?calculate=${supplierId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -135,11 +154,21 @@ export const MobileOrders: React.FC = () => {
       <div className="p-4 space-y-4">
         <Button
           className="w-full flex items-center gap-2"
-          onClick={() => navigate('/mobile/orders/new')}
+          onClick={() => setIsNewOrderModalOpen(true)}
         >
           <Plus className="h-4 w-4" />
           Nuevo Pedido
         </Button>
+
+        <NewOrderModal
+          open={isNewOrderModalOpen}
+          onClose={() => setIsNewOrderModalOpen(false)}
+          onCreateEmpty={handleCreateEmpty}
+          onCreateFromCopy={handleCreateFromCopy}
+          onCreateCalculated={handleCreateCalculated}
+          orderType="customer"
+          customers={customers}
+        />
 
         <div className="space-y-4">
           {orders.map((order) => (
@@ -159,25 +188,14 @@ export const MobileOrders: React.FC = () => {
                           {OrderStatusLabel[order.status]}
                         </span>
                       </div>
-
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Cliente:</span>
-                          <span className="font-medium">{getCustomerName(order.customerId)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Productos:</span>
-                          <span className="font-medium">{order.products?.length || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Recetas:</span>
-                          <span className="font-medium">{order.recipes?.length || 0}</span>
-                        </div>
+                      <div className="text-sm text-muted-foreground">
+                        Cliente: {getCustomerName(order.customerId)}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </DialogTrigger>
+
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Select } from '@/presentation/components/ui/select';
-import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 interface OrderStatusSelectProps {
   value: OrderStatus;

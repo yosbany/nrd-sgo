@@ -13,7 +13,13 @@ interface OrderTextFormatterProps {
   supplierName?: string;
   products?: Array<{ id: string; name: string; purchaseUnit?: string; saleUnit?: string }>;
   recipes?: Array<{ id: string; name: string; unit?: string }>;
-  format?: 'whatsapp' | 'print';
+  outputFormat?: 'whatsapp' | 'print';
+}
+
+interface FormattedItem {
+  quantity: number;
+  unit: string;
+  description: string;
 }
 
 export class OrderTextFormatter {
@@ -21,20 +27,22 @@ export class OrderTextFormatter {
   private type: 'customer' | 'production' | 'purchase';
   private products?: Array<{ id: string; name: string; purchaseUnitId?: string; salesUnitId?: string }>;
   private recipes?: Array<{ id: string; name: string; yieldUnitId?: string }>;
-  private format: 'whatsapp' | 'print';
+  private outputFormat: 'whatsapp' | 'print';
   private units?: Array<{ id: string; name: string }>;
+  private customerName?: string;
 
   constructor(props: OrderTextFormatterProps) {
     this.order = props.order;
     this.type = props.type;
     this.products = props.products;
     this.recipes = props.recipes;
-    this.format = props.format || 'whatsapp';
+    this.outputFormat = props.outputFormat || 'whatsapp';
     this.units = props.units;
+    this.customerName = props.customerName;
   }
 
   private wrap(text: string, isHeader = false): string {
-    if (this.format === 'print') {
+    if (this.outputFormat === 'print') {
       return isHeader ? `<div style="font-size: 14px;"><b>${text}</b></div>` : text;
     }
     return text;
@@ -51,8 +59,9 @@ export class OrderTextFormatter {
   }
 
   private getUnitName(unitId?: string): string {
-    if (!unitId) return 'und';
-    return this.units?.find(u => u.id === unitId)?.name || 'und';
+    if (!unitId || !this.units) return 'Unidad';
+    const unit = this.units.find(u => u.id === unitId);
+    return unit?.name || 'Unidad';
   }
 
   private formatWhatsAppHeader(title: string, orderId: string): string {
@@ -83,7 +92,7 @@ export class OrderTextFormatter {
         break;
     }
 
-    return this.format === 'print' 
+    return this.outputFormat === 'print' 
       ? this.formatPrintHeader(title, orderId)
       : this.formatWhatsAppHeader(title, orderId);
   }
@@ -138,7 +147,7 @@ export class OrderTextFormatter {
   }
 
   private formatItem(quantity: number, name: string, unit: string): string {
-    return this.format === 'print'
+    return this.outputFormat === 'print'
       ? this.formatPrintItem(quantity, name, unit)
       : this.formatWhatsAppItem(quantity, name, unit);
   }
@@ -155,52 +164,27 @@ export class OrderTextFormatter {
   }
 
   private getItems() {
-    const items: string[] = [];
-    
     if (this.type === 'customer') {
       const customerOrder = this.order as CustomerOrder;
-      if (customerOrder.products?.length) {
-        customerOrder.products.forEach(product => {
-          const productInfo = this.products?.find(p => p.id === product.productId);
-          const productName = productInfo?.name || 'Producto no encontrado';
-          const unit = this.getUnitName(productInfo?.salesUnitId);
-          items.push(this.formatItem(product.quantity, productName, unit));
-        });
-      }
-      if (customerOrder.recipes?.length) {
-        if (items.length > 0 && this.format === 'whatsapp') items.push('');
-        customerOrder.recipes.forEach(recipe => {
-          const recipeInfo = this.recipes?.find(r => r.id === recipe.recipeId);
-          const recipeName = recipeInfo?.name || 'Receta no encontrada';
-          const unit = this.getUnitName(recipeInfo?.yieldUnitId);
-          items.push(this.formatItem(recipe.quantity, recipeName, unit));
-        });
-      }
-    } else if (this.type === 'production') {
-      const productionOrder = this.order as ProductionOrder;
-      if (productionOrder.recipes?.length) {
-        productionOrder.recipes.forEach(recipe => {
-          const recipeInfo = this.recipes?.find(r => r.id === recipe.recipeId);
-          const recipeName = recipeInfo?.name || 'Receta no encontrada';
-          const unit = this.getUnitName(recipeInfo?.yieldUnitId);
-          items.push(this.formatItem(recipe.quantity, recipeName, unit));
-        });
-      }
-    } else if (this.type === 'purchase') {
-      const purchaseOrder = this.order as PurchaseOrder;
-      if (purchaseOrder.products?.length) {
-        purchaseOrder.products.forEach(product => {
-          const productInfo = this.products?.find(p => p.id === product.productId);
-          const productName = productInfo?.name || 'Producto no encontrado';
-          const unit = this.getUnitName(productInfo?.purchaseUnitId);
-          items.push(this.formatItem(product.quantity, productName, unit));
-        });
-      }
+      return customerOrder.items.map(item => {
+        let description = '';
+        let unit = 'Unidad';
+
+        if (item.typeItem === 'product') {
+          const productInfo = this.products?.find(p => p.id === item.itemId);
+          unit = this.getUnitName(productInfo?.salesUnitId);
+          description = productInfo?.name || 'Producto no encontrado';
+        } else if (item.typeItem === 'recipe') {
+          const recipeInfo = this.recipes?.find(r => r.id === item.itemId);
+          unit = this.getUnitName(recipeInfo?.yieldUnitId);
+          description = recipeInfo?.name || 'Receta no encontrada';
+        }
+
+        return `${item.quantity} ${unit} - ${description}`;
+      }).join(this.outputFormat === 'print' ? '<br>' : '\n');
     }
 
-    return this.format === 'print'
-      ? this.formatPrintItems(items)
-      : this.formatWhatsAppItems(items);
+    return '';
   }
 
   private formatWhatsAppTotal(totalText: string): string {
@@ -218,22 +202,30 @@ export class OrderTextFormatter {
 
     if (this.type === 'customer') {
       const customerOrder = this.order as CustomerOrder;
-      const productsTotal = customerOrder.products?.reduce((sum, p) => sum + p.quantity, 0) || 0;
-      const recipesTotal = customerOrder.recipes?.reduce((sum, r) => sum + r.quantity, 0) || 0;
-      
-      if (productsTotal > 0) {
-        const firstProduct = customerOrder.products?.[0];
-        const productInfo = this.products?.find(p => p.id === firstProduct?.productId);
-        const productUnit = this.getUnitName(productInfo?.salesUnitId);
-        totalText += `Total Productos: ${productsTotal} ${productUnit}`;
-      }
-      
-      if (recipesTotal > 0) {
-        const firstRecipe = customerOrder.recipes?.[0];
-        const recipeInfo = this.recipes?.find(r => r.id === firstRecipe?.recipeId);
-        const recipeUnit = this.getUnitName(recipeInfo?.yieldUnitId);
-        if (totalText) totalText += this.format === 'print' ? '<br>' : '\n';
-        totalText += `Total Items: ${recipesTotal} ${recipeUnit}`;
+      const items: FormattedItem[] = customerOrder.items.map(item => {
+        let description = '';
+        let unit = 'Unidad';
+
+        if (item.typeItem === 'product') {
+          const productInfo = this.products?.find(p => p.id === item.itemId);
+          unit = this.getUnitName(productInfo?.salesUnitId);
+          description = productInfo?.name || 'Producto no encontrado';
+        } else if (item.typeItem === 'recipe') {
+          const recipeInfo = this.recipes?.find(r => r.id === item.itemId);
+          unit = this.getUnitName(recipeInfo?.yieldUnitId);
+          description = recipeInfo?.name || 'Receta no encontrada';
+        }
+
+        return {
+          quantity: item.quantity,
+          unit,
+          description
+        };
+      });
+
+      if (items.length > 0) {
+        const firstItem = items[0];
+        totalText = `Total Items: ${customerOrder.totalItems} ${firstItem.unit}`;
       }
     } else if (this.type === 'production') {
       const productionOrder = this.order as ProductionOrder;
@@ -259,13 +251,28 @@ export class OrderTextFormatter {
       }
     }
 
-    return this.format === 'print'
+    return this.outputFormat === 'print'
       ? this.formatPrintTotal(totalText)
       : this.formatWhatsAppTotal(totalText);
   }
 
-  toString() {
-    const content = this.getHeader() + this.getItems() + this.getTotal();
-    return this.format === 'print' ? '<body>' + content + '</body>' : content;
+  public toString(): string {
+    const date = format(new Date(this.order.orderDate), 'dd/MM/yyyy', { locale: es });
+    const items = this.getItems();
+    const total = this.getTotal();
+
+    let header = '';
+    if (this.type === 'customer') {
+      header = `Pedido de Cliente #${this.order.id}\n`;
+      header += `Cliente: ${this.customerName || 'No especificado'}\n`;
+    }
+
+    const body = `
+Fecha: ${date}
+${items}
+${total}
+`;
+
+    return header + body;
   }
 } 

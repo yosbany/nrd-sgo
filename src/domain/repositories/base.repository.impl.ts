@@ -1,13 +1,15 @@
-import { Database, ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
+import { Database, ref, get, set, push, update, remove, query, orderByChild, equalTo, DatabaseReference, DataSnapshot } from 'firebase/database';
 import { IBaseRepository } from '../../domain/repositories/interfaces/base.repository.interface';
 import { BaseEntity } from '../models/base.entity';
 
 export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseRepository<T> {
-  protected dbRef: string;
+  protected db: Database;
+  protected path: string;
   protected abstract modelProperties: (keyof T)[];
 
-  constructor(protected db: Database, collectionName: string) {
-    this.dbRef = collectionName;
+  constructor(db: Database, path: string) {
+    this.db = db;
+    this.path = path;
   }
 
   protected validateModelData(data: Record<string, unknown>): void {
@@ -18,7 +20,7 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
     // Verificar propiedades no definidas en el modelo
     const invalidProps = Object.keys(data).filter(key => 
       !this.modelProperties.includes(key as keyof T) && 
-      key !== 'id' && 
+      key !== 'nro' &&
       key !== 'createdAt' && 
       key !== 'updatedAt'
     );
@@ -60,12 +62,12 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
     } as T;
   }
 
-  protected getRef(path?: string): any {
-    return ref(this.db, path ? `${this.dbRef}/${path}` : this.dbRef);
+  protected getRef(path?: string): DatabaseReference {
+    return ref(this.db, path ? `${this.path}/${path}` : this.path);
   }
 
-  protected async getSnapshot(path?: string) {
-    return await get(this.getRef(path));
+  protected async getSnapshot(path?: string): Promise<DataSnapshot> {
+    return get(this.getRef(path));
   }
 
   protected async setData(path: string, data: any) {
@@ -97,76 +99,74 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
 
   async findAll(): Promise<T[]> {
     const snapshot = await this.getSnapshot();
-    if (!snapshot.exists()) {
-      return [];
-    }
-    const data = snapshot.val() as Record<string, Record<string, unknown>>;
-    return Object.entries(data).map(([id, value]) => this.mapDocumentToEntity(value, id));
+    if (!snapshot.exists()) return [];
+
+    const data = snapshot.val() as Record<string, Omit<T, 'id'>>;
+    return Object.entries(data).map(([id, value]) => ({
+      ...value,
+      id,
+    }));
   }
 
   async findById(id: string): Promise<T | null> {
     const snapshot = await this.getSnapshot(id);
-    if (!snapshot.exists()) {
-      return null;
-    }
-    return this.mapDocumentToEntity(snapshot.val() as Record<string, unknown>, id);
+    if (!snapshot.exists()) return null;
+
+    const data = snapshot.val() as Omit<T, 'id'>;
+    return {
+      ...data,
+      id,
+    };
   }
 
   async create(data: Omit<T, 'id'>): Promise<T> {
-    try {
-      // Validar los datos antes de crear
-      this.validateModelData(data as Record<string, unknown>);
-
-      // Añadir timestamps
-      const now = new Date();
-      const dataWithTimestamps = {
-        ...data,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString()
-      };
-
-      const newRef = await this.pushData(dataWithTimestamps);
-      return this.mapDocumentToEntity(dataWithTimestamps as Record<string, unknown>, newRef.key as string);
-    } catch (error) {
-      throw new Error(`Error creating entity: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    // Eliminar el id si existe en los datos
+    const { id: _, ...dataWithoutId } = data as any;
+    
+    const newRef = push(this.getRef());
+    const id = newRef.key!;
+    
+    await set(newRef, dataWithoutId);
+    
+    return {
+      ...dataWithoutId,
+      id,
+    };
   }
 
   async update(id: string, data: Partial<T>): Promise<void> {
-    try {
-      // Validar los datos antes de actualizar
-      this.validateModelData(data as Record<string, unknown>);
-
-      // Añadir timestamp de actualización
-      const dataWithTimestamp = {
-        ...data,
-        updatedAt: new Date().toISOString()
-      };
-
-      await this.updateData(id, dataWithTimestamp);
-    } catch (error) {
-      throw new Error(`Error updating entity: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const entityRef = ref(this.db, `${this.path}/${id}`);
+    const snapshot = await get(entityRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Entity not found');
     }
+    
+    // Eliminar el id si existe en los datos de actualización
+    const { id: _, ...updateData } = data as any;
+    
+    const currentData = snapshot.val() as Omit<T, 'id'>;
+    await set(entityRef, {
+      ...currentData,
+      ...updateData,
+      updatedAt: new Date(),
+    });
   }
 
   async delete(id: string): Promise<void> {
-    try {
-      await this.removeData(id);
-    } catch (error) {
-      throw new Error(`Error deleting entity: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    await remove(ref(this.db, `${this.path}/${id}`));
   }
 
   async findByField(field: keyof T, value: string | number | boolean | null): Promise<T[]> {
-    try {
-      const snapshot = await this.queryData(field as string, value);
-      if (!snapshot.exists()) {
-        return [];
-      }
-      const data = snapshot.val() as Record<string, Record<string, unknown>>;
-      return Object.entries(data).map(([id, value]) => this.mapDocumentToEntity(value, id));
-    } catch (error) {
-      throw new Error(`Error finding by field: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    const snapshot = await this.getSnapshot();
+    if (!snapshot.exists()) return [];
+
+    const data = snapshot.val() as Record<string, Omit<T, 'id'>>;
+    return Object.entries(data)
+      .filter(([_, entity]) => entity[field as keyof Omit<T, 'id'>] === value)
+      .map(([id, value]) => ({
+        ...value,
+        id,
+      }));
   }
 } 

@@ -8,7 +8,7 @@ import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
 
 export const MobileOrderView: React.FC = () => {
   const { id } = useParams<{ id: string }>();

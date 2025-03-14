@@ -6,7 +6,7 @@ import { CustomerRepositoryImpl } from '../repositories/customer.repository.impl
 import { SupplierRepositoryImpl } from '../repositories/supplier.repository.impl';
 import { WorkerRepositoryImpl } from '../repositories/worker.repository.impl';
 import { RecipeRepositoryImpl } from '../repositories/recipe.repository.impl';
-import { OrderStatus } from '../models/order-status.enum';
+import { OrderStatus } from '../enums/order-status.enum';
 import { database } from '@/config/firebase';
 
 export interface DashboardStats {

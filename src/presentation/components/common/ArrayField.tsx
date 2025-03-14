@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/presentation/components/ui/dialog';
-import { Button } from '@/presentation/components/ui/button';
+  Button,
+} from '@/presentation/components/ui/button';
 import {
   Table,
   TableBody,
@@ -63,6 +59,8 @@ interface ArrayFieldProps {
     initialData: Record<string, any>;
     onSubmit: (values: any) => void;
     onCancel: () => void;
+    keepOpen?: boolean;
+    onKeepOpenChange?: (checked: boolean) => void;
   }>;
 }
 
@@ -72,10 +70,10 @@ export function ArrayField({
   config,
   FormContent,
 }: ArrayFieldProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [keepOpen, setKeepOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [referencedData, setReferencedData] = useState<Record<string, Record<string, any>>>({});
+  const [referencedData, setReferencedData] = useState<Record<string, Record<string, unknown>>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
@@ -94,7 +92,6 @@ export function ArrayField({
       editButtonTooltip = 'Editar',
       deleteButtonTooltip = 'Eliminar',
       disableEditIf,
-      disableDeleteIf,
     },
   } = config;
 
@@ -114,10 +111,10 @@ export function ArrayField({
       });
 
       const results = await Promise.all(promises);
-      const newReferencedData: Record<string, Record<string, any>> = {};
+      const newReferencedData: Record<string, Record<string, unknown>> = {};
 
       results.forEach(({ field, data }) => {
-        const dataMap: Record<string, any> = {};
+        const dataMap: Record<string, unknown> = {};
         data.forEach(item => {
           dataMap[item.id] = item;
         });
@@ -130,18 +127,33 @@ export function ArrayField({
     loadReferencedData();
   }, [columns]);
 
+  // Actualizar el formulario cuando cambian los datos referenciados
+  useEffect(() => {
+    if (isAdding) {
+      // Forzar una actualización del formulario
+      setIsAdding(false);
+      setTimeout(() => setIsAdding(true), 0);
+    }
+  }, [referencedData]);
+
+  // Actualizar el formulario cuando cambian los datos referenciados
+  useEffect(() => {
+    if (editingIndex !== null) {
+      // Forzar una actualización del formulario
+      const currentIndex = editingIndex;
+      setEditingIndex(null);
+      setTimeout(() => setEditingIndex(currentIndex), 0);
+    }
+  }, [referencedData]);
+
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setEditingItem(null);
-    setEditingIndex(null);
-    setIsModalOpen(true);
+    setIsAdding(true);
   };
 
-  const handleEdit = (item: any, index: number) => {
-    setEditingItem(item);
+  const handleEdit = (item: Record<string, unknown>, index: number) => {
     setEditingIndex(index);
-    setIsModalOpen(true);
   };
 
   const handleDelete = (index: number) => {
@@ -155,18 +167,26 @@ export function ArrayField({
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = (formValues: any) => {
+  const handleSubmit = (formValues: Record<string, unknown>) => {
     const newValue = [...value];
     if (editingIndex !== null) {
       newValue[editingIndex] = formValues;
+      setEditingIndex(null);
     } else {
       newValue.push(formValues);
+      if (!keepOpen) {
+        setIsAdding(false);
+      }
     }
-    setIsModalOpen(false);
     onChange(newValue);
   };
 
-  const renderCellValue = (item: any, column: Column) => {
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingIndex(null);
+  };
+
+  const renderCellValue = (item: Record<string, unknown>, column: Column) => {
     if (column.render) {
       return column.render(item[column.accessor], item);
     }
@@ -174,8 +194,8 @@ export function ArrayField({
     if (column.reference) {
       const referenceId = item[column.accessor];
       const referenceName = column.accessor.replace('Id', '');
-      const referencedItem = referencedData[referenceName]?.[referenceId];
-      return referencedItem ? referencedItem[column.reference.displayField] : 'N/A';
+      const referencedItem = referencedData[referenceName]?.[referenceId as string];
+      return referencedItem ? (referencedItem as Record<string, unknown>)[column.reference.displayField] : 'N/A';
     }
 
     return item[column.accessor];
@@ -195,19 +215,38 @@ export function ArrayField({
         />
 
         <div className="flex items-center justify-between">
-          <Button 
-            onClick={handleAdd} 
-            size="sm" 
-            variant="secondary" 
-            className="h-8"
-            type="button"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {addButtonText}
-          </Button>
+          {!isAdding && (
+            <Button 
+              onClick={handleAdd} 
+              size="sm" 
+              variant="secondary" 
+              className="h-8"
+              type="button"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {addButtonText}
+            </Button>
+          )}
         </div>
 
-        {value.length === 0 ? (
+        {isAdding && (
+          <div className="rounded-lg border border-border/50 p-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex-1">
+                <FormContent
+                  arrayForm={config.form}
+                  initialData={{}}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancel}
+                  keepOpen={keepOpen}
+                  onKeepOpenChange={(checked) => setKeepOpen(checked)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {value.length === 0 && !isAdding ? (
           <div className="text-center py-6 rounded-lg bg-muted/5 border border-dashed">
             <h4 className="text-sm font-medium text-muted-foreground">
               {emptyState.title}
@@ -232,79 +271,78 @@ export function ArrayField({
               <TableBody>
                 {value.map((item, index) => (
                   <TableRow key={index} className="hover:bg-muted/5">
-                    {columns.map((column, colIndex) => (
-                      <TableCell key={colIndex} className="py-2 text-sm">
-                        {renderCellValue(item, column)}
+                    {editingIndex === index ? (
+                      <TableCell colSpan={columns.length + 1} className="p-0">
+                        <div className="p-4">
+                          <FormContent
+                            arrayForm={config.form}
+                            initialData={item}
+                            onSubmit={handleSubmit}
+                            onCancel={handleCancel}
+                          />
+                        </div>
                       </TableCell>
-                    ))}
-                    <TableCell className="py-2">
-                      <div className="flex items-center gap-0.5">
-                        {(!disableEditIf || !disableEditIf(item)) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleEdit(item, index);
-                                }}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{editButtonTooltip}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDeleteClick(index);
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{deleteButtonTooltip}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
+                    ) : (
+                      <>
+                        {columns.map((column, colIndex) => (
+                          <TableCell key={colIndex} className="py-2 text-sm">
+                            {renderCellValue(item, column)}
+                          </TableCell>
+                        ))}
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-0.5">
+                            {(disableEditIf ? !disableEditIf(item) : true) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleEdit(item, index);
+                                    }}
+                                  >
+                                    <Pencil className="h-5 w-5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{editButtonTooltip}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-transparent"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteClick(index);
+                                  }}
+                                >
+                                  <Trash2 className="h-5 w-5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{deleteButtonTooltip}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
         )}
-
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-lg">
-                {editingItem ? modalTitles.edit : modalTitles.add}
-              </DialogTitle>
-            </DialogHeader>
-            <FormContent
-              arrayForm={config.form}
-              initialData={editingItem || {}}
-              onSubmit={handleSubmit}
-              onCancel={() => setIsModalOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
     </TooltipProvider>
   );

@@ -167,7 +167,7 @@ const Select = React.forwardRef<any, SelectProps>(
         transition: 'transform 150ms ease',
         transform: state.selectProps.menuIsOpen ? 'rotate(180deg)' : undefined,
         color: 'hsl(var(--muted-foreground))',
-        padding: '0 8px',
+        padding: '0 4px',
         '&:hover': {
           color: 'hsl(var(--foreground))'
         }
@@ -175,7 +175,7 @@ const Select = React.forwardRef<any, SelectProps>(
       clearIndicator: (base) => ({
         ...base,
         color: 'hsl(var(--muted-foreground))',
-        padding: '0 8px',
+        padding: '0 2px',
         '&:hover': {
           color: 'hsl(var(--foreground))'
         }

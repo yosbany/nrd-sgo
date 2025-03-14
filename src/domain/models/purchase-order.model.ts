@@ -1,5 +1,5 @@
 import { BaseEntity } from './base.entity';
-import { OrderStatus } from './order-status.enum';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export interface ProductItem {
   productId: string;
@@ -13,4 +13,5 @@ export interface PurchaseOrder extends BaseEntity {
   products: ProductItem[];
   totalItems: number;
   totalProducts: number;
+  referenceOrderNumber?: string;
 } 

@@ -1,22 +1,30 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GenericList } from '../../components/common/GenericList';
 import { ProductionOrder } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
-import { OrderStatus } from '@/domain/models/order-status.enum';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 import { Recipe } from '@/domain/models/recipe.model';
+import { DesktopOrderModal } from '@/presentation/components/orders/DesktopOrderModal';
+import { Worker } from '@/domain/models/worker.model';
+import { PrintOrder } from '@/presentation/components/PrintOrder';
+import { createRoot } from 'react-dom/client';
 
 export function ProductionOrderList() {
+  const navigate = useNavigate();
   const orderService = new ProductionOrderServiceImpl();
   const workerService = new WorkerServiceImpl();
   const recipeService = new RecipeServiceImpl();
   const unitService = new UnitServiceImpl();
 
   const [workers, setWorkers] = React.useState<Record<string, string>>({});
+  const [workersData, setWorkersData] = React.useState<Worker[]>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
   const [units, setUnits] = React.useState<Record<string, string>>({});
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -38,6 +46,7 @@ export function ProductionOrderList() {
         }, {} as Record<string, string>);
 
         setWorkers(workersMap);
+        setWorkersData(workersData);
         setRecipes(recipesData);
         setUnits(unitsMap);
       } catch (error) {
@@ -48,12 +57,66 @@ export function ProductionOrderList() {
     loadData();
   }, []);
 
+  const handleCreateEmpty = () => {
+    navigate('/production-orders/new');
+  };
+
+  const handleCreateFromCopy = (orderId: string) => {
+    navigate(`/production-orders/new?copy=${orderId}`);
+  };
+
+  const handleCreateCalculated = (workerId: string) => {
+    navigate(`/production-orders/new?calculate=${workerId}`);
+  };
+
+  const handlePrint = (order: ProductionOrder) => {
+    const items = order.recipes.map(recipe => {
+      const recipeData = recipes.find(r => r.id === recipe.recipeId);
+      const unit = units[recipeData?.yieldUnitId || ''] || 'Unidad';
+      return {
+        quantity: recipe.quantity,
+        unit,
+        description: recipeData?.name || 'Receta no encontrada'
+      };
+    });
+
+    const worker = workersData.find(w => w.id === order.responsibleWorkerId);
+    const printWindow = window.open('', '_blank');
+    
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Orden de Producción</title></head><body>');
+      printWindow.document.write('<div id="print-root"></div>');
+      printWindow.document.write('</body></html>');
+      
+      const root = printWindow.document.getElementById('print-root');
+      if (root) {
+        const reactRoot = createRoot(root);
+        reactRoot.render(
+          <PrintOrder
+            orderNumber={order.id}
+            date={new Date(order.orderDate)}
+            contactType="empleado"
+            contactName={worker?.name || 'Empleado no encontrado'}
+            items={items}
+          />
+        );
+        
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      }
+    }
+  };
+
   const columns = [
     {
       header: 'Trabajador',
       accessor: 'responsibleWorkerId' as keyof ProductionOrder,
-      render: (item: ProductionOrder) =>
-        workers[item.responsibleWorkerId] || 'Trabajador no encontrado',
+      render: (item: ProductionOrder) => {
+        const workerId = item.responsibleWorkerId;
+        return workerId && workers[workerId] ? workers[workerId] : 'Trabajador no encontrado';
+      },
     },
     {
       header: 'Fecha',
@@ -61,21 +124,12 @@ export function ProductionOrderList() {
       type: 'date' as const,
     },
     {
-      header: 'Total Recetas',
+      header: 'Totales',
       accessor: 'totalProducts' as keyof ProductionOrder,
-    },
-    {
-      header: 'Total Items',
-      accessor: 'totalItems' as keyof ProductionOrder,
       render: (item: ProductionOrder) => {
-        const firstRecipe = item.recipes?.[0];
-        if (firstRecipe) {
-          const recipe = recipes.find(r => r.id === firstRecipe.recipeId);
-          if (recipe && recipe.yieldUnitId) {
-            return `${item.totalItems} ${units[recipe.yieldUnitId] || 'Unidad no encontrada'}`;
-          }
-        }
-        return item.totalItems;
+        const totalProducts = item.totalProducts || 0;
+        const totalItems = item.totalItems || 0;
+        return `${totalProducts} / ${totalItems}`;
       },
     },
     {
@@ -85,22 +139,22 @@ export function ProductionOrderList() {
       tags: [
         { 
           value: OrderStatus.PENDIENTE, 
-          label: 'Pendiente', 
+          label: OrderStatus.PENDIENTE, 
           color: 'warning' as const 
         },
         { 
           value: OrderStatus.ENVIADA, 
-          label: 'Enviada', 
+          label: OrderStatus.ENVIADA, 
           color: 'info' as const 
         },
         { 
           value: OrderStatus.COMPLETADA, 
-          label: 'Completada', 
+          label: OrderStatus.COMPLETADA, 
           color: 'success' as const 
         },
         { 
           value: OrderStatus.CANCELADA, 
-          label: 'Cancelada', 
+          label: OrderStatus.CANCELADA, 
           color: 'danger' as const 
         }
       ]
@@ -108,16 +162,26 @@ export function ProductionOrderList() {
   ];
 
   return (
-    <GenericList<ProductionOrder>
-      columns={columns}
-      title="Órdenes de Producción"
-      addPath="/production-orders/new"
-      backPath="/production-orders"
-      service={orderService}
-      type="production"
-      recipes={recipes}
-      workerName={workers}
-      units={units}
-    />
+    <>
+      <DesktopOrderModal
+        open={isNewOrderModalOpen}
+        onClose={() => setIsNewOrderModalOpen(false)}
+        onCreateEmpty={handleCreateEmpty}
+        onCreateFromCopy={handleCreateFromCopy}
+        onCreateCalculated={handleCreateCalculated}
+        orderType="production"
+        workers={workersData}
+      />
+
+      <GenericList<ProductionOrder>
+        columns={columns}
+        title="Órdenes de Producción"
+        onAddClick={() => setIsNewOrderModalOpen(true)}
+        backPath="/production-orders"
+        service={orderService}
+        type="production"
+        onPrint={handlePrint}
+      />
+    </>
   );
 } 

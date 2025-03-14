@@ -1,5 +1,5 @@
 import { BaseEntity } from './base.entity';
-import { OrderStatus } from './order-status.enum';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export interface ProductionRatio {
   name: string;

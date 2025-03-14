@@ -1,4 +1,4 @@
-import { Database, query, orderByChild, equalTo, get, ref } from 'firebase/database';
+import { Database, query, orderByChild, equalTo, get } from 'firebase/database';
 import { Product, ProductStatus } from '../models/product.model';
 import { BaseRepositoryImpl } from './base.repository.impl';
 import { IProductRepository } from './interfaces/product.repository.interface';
@@ -30,7 +30,8 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
     'sectorOrder',
     'desiredStock',
     'salesChannels',
-    'priceHistory'
+    'priceHistory',
+    'margin'
   ];
 
   constructor(db: Database) {
@@ -87,7 +88,7 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
 
   async findByDesiredStockBelow(stock: number): Promise<Product[]> {
     const q = query(
-      ref(this.db, this.dbRef),
+      this.getRef(),
       orderByChild('desiredStock')
     );
     const snapshot = await get(q);
@@ -102,7 +103,7 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
 
   async findBySalesChannel(channelCode: string): Promise<Product[]> {
     const q = query(
-      ref(this.db, this.dbRef),
+      this.getRef(),
       orderByChild('salesChannels'),
       equalTo(channelCode)
     );
@@ -120,7 +121,7 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
 
   async findByPriceRange(minPrice: number, maxPrice: number): Promise<Product[]> {
     const q = query(
-      ref(this.db, this.dbRef),
+      this.getRef(),
       orderByChild('salePrice')
     );
     const snapshot = await get(q);
@@ -137,7 +138,7 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
 
   async findByStockRange(minStock: number, maxStock: number): Promise<Product[]> {
     const q = query(
-      ref(this.db, this.dbRef),
+      this.getRef(),
       orderByChild('desiredStock')
     );
     const snapshot = await get(q);

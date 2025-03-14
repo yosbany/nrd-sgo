@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { ArrayTable } from '../../components/common/ArrayTable';
-import { CustomerOrder, ProductItem, RecipeItems } from '../../../domain/models/customer-order.model';
+import { CustomerOrder } from '../../../domain/models/customer-order.model';
 import { CustomerOrderServiceImpl } from '../../../domain/services/customer-order.service.impl';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
@@ -10,7 +10,7 @@ import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl'
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
 import { Recipe } from '../../../domain/models/recipe.model';
-import { OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 export function CustomerOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -61,63 +61,52 @@ export function CustomerOrderDetails() {
     loadData();
   }, []);
 
-  
-  const renderProducts = (orderProducts: ProductItem[]) => {
+  const renderItems = (items: CustomerOrder['items']) => {
     const columns = [
       {
-        header: 'Producto',
-        accessor: (item: ProductItem) => {
-          if (item.productId) {
-            const product = products[item.productId];
-            return <div className="font-medium">{product?.name || 'Producto no encontrado'}</div>;
+        header: 'Item',
+        accessor: (item: CustomerOrder['items'][0]) => {
+          let name = '';
+          if (item.typeItem === 'product') {
+            const product = products[item.itemId];
+            name = product?.name || 'Producto no encontrado';
+          } else if (item.typeItem === 'recipe') {
+            const recipe = recipes[item.itemId];
+            name = recipe?.name || 'Receta no encontrada';
           }
-          return 'Producto no especificado';
+          return <div className="font-medium">{name}</div>;
+        }
+      },
+      {
+        header: 'Tipo',
+        accessor: (item: CustomerOrder['items'][0]) => {
+          return item.typeItem === 'product' ? 'Producto' : 'Receta';
         }
       },
       {
         header: 'Cantidad',
-        accessor: (item: ProductItem) => {
-          if (item.productId) {
-            const product = products[item.productId];
-            const unitName = product?.salesUnitId ? units[product.salesUnitId] : 'Unidad no encontrada';
-            return `${item.quantity} ${unitName}`;
+        accessor: (item: CustomerOrder['items'][0]) => {
+          let unitName = 'Unidad';
+          if (item.typeItem === 'product') {
+            const product = products[item.itemId];
+            unitName = product?.salesUnitId ? units[product.salesUnitId] || 'Unidad' : 'Unidad';
+          } else if (item.typeItem === 'recipe') {
+            const recipe = recipes[item.itemId];
+            unitName = recipe?.yieldUnitId ? units[recipe.yieldUnitId] || 'Unidad' : 'Unidad';
           }
-          return item.quantity;
-        }
-      }
-    ];
-
-    return <ArrayTable data={orderProducts} columns={columns} emptyMessage="No hay productos" />;
-  };
-
-  const renderRecipes = (orderRecipes: RecipeItems[]) => {
-    const columns = [
-      {
-        header: 'Receta',
-        accessor: (item: RecipeItems) => {
-          const recipe = recipes[item.recipeId];
-          return <div className="font-medium">{recipe?.name || 'Receta no encontrada'}</div>;
-        }
-      },
-      {
-        header: 'Cantidad',
-        accessor: (item: RecipeItems) => {
-          const recipe = recipes[item.recipeId];
-          const unitName = recipe?.yieldUnitId ? units[recipe.yieldUnitId] : 'Unidad no encontrada';
           return `${item.quantity} ${unitName}`;
         }
       }
     ];
 
-    return <ArrayTable data={orderRecipes} columns={columns} emptyMessage="No hay recetas" />;
+    return <ArrayTable data={items} columns={columns} emptyMessage="No hay items" />;
   };
 
   const getFields = (order: CustomerOrder) => [
     { label: 'Cliente', value: customers[order.customerId] || 'Cliente no encontrado' },
     { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
-    { label: 'Productos', value: renderProducts(order.products) },
-    { label: 'Recetas', value: renderRecipes(order.recipes) },
+    { label: 'Items', value: renderItems(order.items) },
     { label: 'Total de Items', value: order.totalItems },
     { label: 'Total de Productos', value: order.totalProducts },
   ];

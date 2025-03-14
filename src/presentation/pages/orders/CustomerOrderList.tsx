@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GenericList } from '../../components/common/GenericList';
 import { CustomerOrder } from '../../../domain/models/customer-order.model';
 import { CustomerOrderServiceImpl } from '../../../domain/services/customer-order.service.impl';
@@ -6,11 +7,24 @@ import { CustomerServiceImpl } from '../../../domain/services/customer.service.i
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
-import { OrderStatus } from '@/domain/models/order-status.enum';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
+import { DesktopOrderModal } from '@/presentation/components/orders/DesktopOrderModal';
+import { Customer } from '@/domain/models/customer.model';
+import { PrintOrder } from '@/presentation/components/PrintOrder';
+import { createRoot } from 'react-dom/client';
+import { BaseService } from '@/domain/interfaces/base-service.interface';
+import { TypeInventory } from '../../../domain/enums/type-inventory.enum';
+
+interface OrderItem {
+  quantity: number;
+  unit: string;
+  description: string;
+}
 
 export function CustomerOrderList() {
+  const navigate = useNavigate();
   const orderService = new CustomerOrderServiceImpl();
   const customerService = new CustomerServiceImpl();
   const productService = new ProductServiceImpl();
@@ -18,9 +32,11 @@ export function CustomerOrderList() {
   const unitService = new UnitServiceImpl();
   
   const [customers, setCustomers] = React.useState<Record<string, string>>({});
+  const [customersData, setCustomersData] = React.useState<Customer[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
   const [units, setUnits] = React.useState<Record<string, string>>({});
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -43,6 +59,7 @@ export function CustomerOrderList() {
         }, {} as Record<string, string>);
 
         setCustomers(customersMap);
+        setCustomersData(customersData);
         setProducts(productsData);
         setRecipes(recipesData);
         setUnits(unitsMap);
@@ -53,6 +70,87 @@ export function CustomerOrderList() {
 
     loadData();
   }, []);
+
+  const handleCreateEmpty = () => {
+    navigate('/customer-orders/new');
+  };
+
+  const handleCreateFromCopy = (orderId: string) => {
+    navigate(`/customer-orders/new?copy=${orderId}`);
+  };
+
+  const handleCreateCalculated = (customerId: string) => {
+    navigate(`/customer-orders/new?calculate=${customerId}`);
+  };
+
+  const handlePrint = (order: CustomerOrder) => {
+    console.log('Order to print (detailed):', JSON.stringify(order, null, 2));
+    console.log('Order to print:', order);
+    console.log('Order items:', order.items);
+    
+    if (!order.items || order.items.length === 0) {
+      console.warn('No hay items para imprimir');
+      return;
+    }
+
+    const items: OrderItem[] = order.items.map(item => {
+      console.log('Processing item:', item);
+      let description = '';
+      let unit = 'Unidad';
+
+      if (item.typeItem === TypeInventory.PRODUCTO) {
+        const productData = products.find(p => p.id === item.itemId);
+        console.log('Found product:', productData);
+        const unitId = productData?.salesUnitId;
+        if (unitId && unitId in units) {
+          unit = units[unitId];
+        }
+        description = productData?.name || 'Producto no encontrado';
+      } else if (item.typeItem === TypeInventory.RECETA) {
+        const recipeData = recipes.find(r => r.id === item.itemId);
+        console.log('Found recipe:', recipeData);
+        const unitId = recipeData?.yieldUnitId;
+        if (unitId && unitId in units) {
+          unit = units[unitId];
+        }
+        description = recipeData?.name || 'Receta no encontrada';
+      }
+
+      return {
+        quantity: item.quantity,
+        unit,
+        description
+      };
+    });
+
+    const customer = customersData.find(c => c.id === order.customerId);
+    const printWindow = window.open('', '_blank');
+    
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Pedido de Cliente</title></head><body>');
+      printWindow.document.write('<div id="print-root"></div>');
+      printWindow.document.write('</body></html>');
+      
+      const root = printWindow.document.getElementById('print-root');
+      if (root) {
+        const reactRoot = createRoot(root);
+        reactRoot.render(
+          <PrintOrder
+            orderNumber={order.nro}
+            date={new Date(order.orderDate)}
+            contactType="cliente"
+            contactName={customer?.name || 'Cliente no encontrado'}
+            items={items}
+          />
+        );
+        
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      }
+    }
+  };
 
   const columns = [
     {
@@ -67,29 +165,9 @@ export function CustomerOrderList() {
       type: 'date' as const,
     },
     {
-      header: 'Total Productos/Recetas',
+      header: 'Totales',
       accessor: 'totalProducts' as keyof CustomerOrder,
-    },
-    {
-      header: 'Total Items',
-      accessor: 'totalItems' as keyof CustomerOrder,
-      render: (item: CustomerOrder) => {
-        const firstProduct = item.products?.[0];
-        if (firstProduct) {
-          const product = products.find(p => p.id === firstProduct.productId);
-          if (product?.salesUnitId) {
-            return `${item.totalItems} ${units[product.salesUnitId] || 'Unidad no encontrada'}`;
-          }
-        }
-        const firstRecipe = item.recipes?.[0];
-        if (firstRecipe) {
-          const recipe = recipes.find(r => r.id === firstRecipe.recipeId);
-          if (recipe?.yieldUnitId) {
-            return `${item.totalItems} ${units[recipe.yieldUnitId] || 'Unidad no encontrada'}`;
-          }
-        }
-        return item.totalItems;
-      },
+      render: (item: CustomerOrder) => `${item.totalProducts}/${item.totalItems}`,
     },
     {
       header: 'Estado',
@@ -98,22 +176,22 @@ export function CustomerOrderList() {
       tags: [
         { 
           value: OrderStatus.PENDIENTE, 
-          label: 'Pendiente', 
+          label: OrderStatus.PENDIENTE, 
           color: 'warning' as const 
         },
         { 
           value: OrderStatus.ENVIADA, 
-          label: 'Enviada', 
+          label: OrderStatus.ENVIADA, 
           color: 'info' as const 
         },
         { 
           value: OrderStatus.COMPLETADA, 
-          label: 'Completada', 
+          label: OrderStatus.COMPLETADA, 
           color: 'success' as const 
         },
         { 
           value: OrderStatus.CANCELADA, 
-          label: 'Cancelada', 
+          label: OrderStatus.CANCELADA, 
           color: 'danger' as const 
         }
       ]
@@ -121,17 +199,26 @@ export function CustomerOrderList() {
   ];
 
   return (
-    <GenericList<CustomerOrder>
-      columns={columns}
-      title="Pedidos de Clientes"
-      addPath="/customer-orders/new"
-      backPath="/customer-orders"
-      service={orderService}
-      type="customer"
-      products={products}
-      recipes={recipes}
-      customerName={customers}
-      units={units}
-    />
+    <>
+      <DesktopOrderModal
+        open={isNewOrderModalOpen}
+        onClose={() => setIsNewOrderModalOpen(false)}
+        onCreateEmpty={handleCreateEmpty}
+        onCreateFromCopy={handleCreateFromCopy}
+        onCreateCalculated={handleCreateCalculated}
+        orderType="customer"
+        customers={customersData}
+      />
+
+      <GenericList<CustomerOrder>
+        columns={columns}
+        title="Pedidos de Clientes"
+        onAddClick={() => setIsNewOrderModalOpen(true)}
+        backPath="/customer-orders"
+        service={orderService as BaseService<CustomerOrder>}
+        type="customer"
+        onPrint={handlePrint}
+      />
+    </>
   );
 } 

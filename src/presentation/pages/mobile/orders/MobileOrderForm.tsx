@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -21,7 +21,8 @@ import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 import { DatePicker } from '@/presentation/components/ui/date-picker';
-import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
+import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
 
 interface QuantityInputProps {
   value: number;
@@ -91,6 +92,9 @@ const QuantityInput: React.FC<QuantityInputProps> = ({ value, unit, onQuantityCh
 
 export const MobileOrderForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const copyFromId = searchParams.get('copy');
+  const calculateFromSupplierId = searchParams.get('calculate');
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -142,7 +146,7 @@ export const MobileOrderForm: React.FC = () => {
 
   React.useEffect(() => {
     loadInitialData();
-  }, [id]);
+  }, [id, copyFromId, calculateFromSupplierId]);
 
   const loadInitialData = async () => {
     try {
@@ -164,6 +168,7 @@ export const MobileOrderForm: React.FC = () => {
       ]);
 
       if (id) {
+        // Cargar orden existente
         const orderService = new CustomerOrderServiceImpl();
         const orderData = await orderService.findById(id);
         if (orderData) {
@@ -172,6 +177,40 @@ export const MobileOrderForm: React.FC = () => {
             orderDate: orderData.orderDate instanceof Date 
               ? orderData.orderDate 
               : new Date(orderData.orderDate)
+          });
+        }
+      } else if (copyFromId) {
+        // Copiar orden existente
+        const orderService = new CustomerOrderServiceImpl();
+        const orderData = await orderService.findById(copyFromId);
+        if (orderData) {
+          setFormData({
+            ...orderData,
+            id: undefined, // Eliminar el ID para que se cree una nueva orden
+            orderDate: new Date(), // Actualizar la fecha
+            status: OrderStatus.PENDIENTE // Restablecer el estado
+          });
+        }
+      } else if (calculateFromSupplierId) {
+        // Crear orden calculada basada en el proveedor
+        const supplierService = new SupplierServiceImpl();
+        const supplier = await supplierService.findById(calculateFromSupplierId);
+        if (supplier) {
+          // Filtrar productos por proveedor principal
+          const supplierProducts = products.filter(
+            product => product.primarySupplierId === calculateFromSupplierId
+          );
+          
+          // Crear orden con productos del proveedor
+          setFormData({
+            orderDate: new Date(),
+            status: OrderStatus.PENDIENTE,
+            products: supplierProducts.map(product => ({
+              productId: product.id,
+              quantity: 0, // La cantidad se calculará después
+              // Otros campos necesarios...
+            })),
+            recipes: []
           });
         }
       }

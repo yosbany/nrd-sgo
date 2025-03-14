@@ -2,7 +2,7 @@ import { Database } from 'firebase/database';
 import { PurchaseOrder } from '../models/purchase-order.model';
 import { IPurchaseOrderRepository } from './interfaces/purchase-order.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
-import { OrderStatus } from '../models/base.entity';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export class PurchaseOrderRepositoryImpl extends BaseRepositoryImpl<PurchaseOrder> implements IPurchaseOrderRepository {
   protected modelProperties: (keyof PurchaseOrder)[] = [

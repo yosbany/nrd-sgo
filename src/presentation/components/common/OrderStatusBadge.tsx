@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderStatus, OrderStatusLabel, OrderStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatus, OrderStatusLabel, OrderStatusColor } from '@/domain/enums/order-status.enum';
 import { cn } from '@/lib/utils';
 
 interface OrderStatusBadgeProps {

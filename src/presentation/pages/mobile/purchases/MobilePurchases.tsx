@@ -18,13 +18,15 @@ import { Plus } from 'lucide-react';
 import { Supplier } from '@/domain/models/supplier.model';
 import { OrderActions } from '@/presentation/components/OrderActions';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
-import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
+import { NewOrderModal } from '@/presentation/components/orders/NewOrderModal';
 
 export const MobilePurchases: React.FC = () => {
   const [orders, setOrders] = React.useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = React.useState<Array<Supplier & { phone?: string }>>([]);
   const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
   const navigate = useNavigate();
   const orderService = new PurchaseOrderServiceImpl();
 
@@ -117,6 +119,18 @@ export const MobilePurchases: React.FC = () => {
     }
   };
 
+  const handleCreateEmpty = () => {
+    navigate('/mobile/purchases/new');
+  };
+
+  const handleCreateFromCopy = (orderId: string) => {
+    navigate(`/mobile/purchases/new?copy=${orderId}`);
+  };
+
+  const handleCreateCalculated = (supplierId: string) => {
+    navigate(`/mobile/purchases/new?calculate=${supplierId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -130,11 +144,21 @@ export const MobilePurchases: React.FC = () => {
       <div className="p-4 space-y-4">
         <Button
           className="w-full flex items-center gap-2"
-          onClick={() => navigate('/mobile/purchases/new')}
+          onClick={() => setIsNewOrderModalOpen(true)}
         >
           <Plus className="h-4 w-4" />
           Nueva Orden de Compra
         </Button>
+
+        <NewOrderModal
+          open={isNewOrderModalOpen}
+          onClose={() => setIsNewOrderModalOpen(false)}
+          onCreateEmpty={handleCreateEmpty}
+          onCreateFromCopy={handleCreateFromCopy}
+          onCreateCalculated={handleCreateCalculated}
+          orderType="purchase"
+          suppliers={suppliers}
+        />
 
         <div className="space-y-4">
           {orders.map((order) => (

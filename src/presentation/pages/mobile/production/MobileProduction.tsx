@@ -17,13 +17,15 @@ import { Plus } from 'lucide-react';
 import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
 import { OrderActions } from '@/presentation/components/OrderActions';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
-import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
+import { NewOrderModal } from '@/presentation/components/orders/NewOrderModal';
 
 export const MobileProduction: React.FC = () => {
   const [orders, setOrders] = React.useState<ProductionOrder[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [workers, setWorkers] = React.useState<Array<{ id: string; name: string; phone?: string }>>([]);
   const [recipes, setRecipes] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
   const navigate = useNavigate();
   const orderService = new ProductionOrderServiceImpl();
   const workerService = new WorkerServiceImpl();
@@ -112,6 +114,18 @@ export const MobileProduction: React.FC = () => {
     }
   };
 
+  const handleCreateEmpty = () => {
+    navigate('/mobile/production/new');
+  };
+
+  const handleCreateFromCopy = (orderId: string) => {
+    navigate(`/mobile/production/new?copy=${orderId}`);
+  };
+
+  const handleCreateCalculated = (workerId: string) => {
+    navigate(`/mobile/production/new?calculate=${workerId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -125,11 +139,21 @@ export const MobileProduction: React.FC = () => {
       <div className="p-4 space-y-4">
         <Button
           className="w-full flex items-center gap-2"
-          onClick={() => navigate('/mobile/production/new')}
+          onClick={() => setIsNewOrderModalOpen(true)}
         >
           <Plus className="h-4 w-4" />
           Nueva Orden de Producción
         </Button>
+
+        <NewOrderModal
+          open={isNewOrderModalOpen}
+          onClose={() => setIsNewOrderModalOpen(false)}
+          onCreateEmpty={handleCreateEmpty}
+          onCreateFromCopy={handleCreateFromCopy}
+          onCreateCalculated={handleCreateCalculated}
+          orderType="production"
+          workers={workers}
+        />
 
         <div className="space-y-4">
           {orders.map((order) => (

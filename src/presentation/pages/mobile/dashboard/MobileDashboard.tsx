@@ -5,7 +5,7 @@ import { FaShoppingCart, FaClipboardList, FaIndustry } from 'react-icons/fa';
 import { CustomerOrderServiceImpl } from '@/domain/services/customer-order.service.impl';
 import { ProductionOrderServiceImpl } from '@/domain/services/production-order.service.impl';
 import { PurchaseOrderServiceImpl } from '@/domain/services/purchase-order.service.impl';
-import { OrderStatus } from '@/domain/models/order-status.enum';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 
 
 export const MobileDashboard: React.FC = () => {

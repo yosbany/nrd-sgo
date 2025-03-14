@@ -7,7 +7,7 @@ import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderStatusLabel, getStatusColor } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
 
 export const MobilePurchaseView: React.FC = () => {
   const { id } = useParams<{ id: string }>();

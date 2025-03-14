@@ -8,7 +8,7 @@ import { SupplierServiceImpl } from '../../../domain/services/supplier.service.i
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
-import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 export function PurchaseOrderDetails() {
   const { id } = useParams<{ id: string }>();

@@ -2,7 +2,7 @@ import { Database } from 'firebase/database';
 import { ProductionOrder } from '../models/production-order.model';
 import { IProductionOrderRepository } from './interfaces/production-order.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
-import { OrderStatus } from '../models/base.entity';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export class ProductionOrderRepositoryImpl extends BaseRepositoryImpl<ProductionOrder> implements IProductionOrderRepository {
   protected modelProperties: (keyof ProductionOrder)[] = [

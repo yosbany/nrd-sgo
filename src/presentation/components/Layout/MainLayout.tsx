@@ -33,7 +33,6 @@ import {
   DropdownMenuTrigger,
 } from "@/presentation/components/ui/dropdown-menu";
 import logo from '@/assets/logo.jpg';
-import { BASE_PATH } from '@/router/constants';
 import { auth } from '@/config/firebase';
 
 interface MainLayoutProps {
@@ -132,15 +131,15 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
       </div>
 
       <nav className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+        <div className="container mx-auto px-1">
+          <div className="flex h-14 items-center justify-between">
             <Link 
               to="/dashboard"
               className="flex items-center space-x-3 cursor-pointer"
               onClick={closeMenu}
             >
               <img src={logo} alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
-              <span className="text-xl font-bold">Sistema de Gestión Operativa</span>
+              <span className="text-base sm:text-lg md:text-xl font-bold truncate">Sistema de Gestión Operativa</span>
             </Link>
 
             {/* Desktop Menu */}
@@ -188,7 +187,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
                       className="rounded-full"
                     >
@@ -227,7 +226,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     className="rounded-full"
                   >
@@ -322,9 +321,9 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         )}
       </nav>
 
-      <main className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="fade-in">
+      <main className="flex-1">
+        <div className="container mx-auto px-1">
+          <div className="fade-in pt-2">
             {children}
           </div>
         </div>

@@ -210,7 +210,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
         "transition-all duration-200 ease-in-out",
         "border-b border-border/40"
       )}>
-        <div className="flex items-center justify-between px-4 h-14">
+        <div className="flex items-center justify-between px-2 h-14">
           <div className="flex items-center gap-3">
             {pageInfo.showBack && (
               <Button
@@ -251,7 +251,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1">
         {isHome ? <MobileDashboard /> : <Outlet />}
       </main>
 

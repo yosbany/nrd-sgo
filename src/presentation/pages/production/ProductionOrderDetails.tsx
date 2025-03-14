@@ -5,7 +5,7 @@ import { ProductionOrder } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
-import { OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 export function ProductionOrderDetails() {
   const { id } = useParams<{ id: string }>();

@@ -9,7 +9,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { DashboardServiceImpl, DashboardData } from '@/domain/services/dashboard.service.impl';
 import { PriceCalculator } from '@/presentation/components/ui/price-calculator';
 import { ProduceCalculator } from '@/presentation/components/ui/produce-calculator';
-import { OrderStatus } from '@/domain/models/order-status.enum';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 
 const DashboardPage: FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);

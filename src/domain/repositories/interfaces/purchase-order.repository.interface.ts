@@ -1,4 +1,4 @@
-import { OrderStatus } from '@/domain/models/base.entity';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 import { PurchaseOrder } from '../../models/purchase-order.model';
 import { IBaseRepository } from './base.repository.interface';
 

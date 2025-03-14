@@ -13,27 +13,38 @@ interface ArrayTableProps<T> {
 export function ArrayTable<T>({ 
   data, 
   columns, 
-  title = 'Registros',
+  title,
   emptyMessage 
 }: ArrayTableProps<T>) {
   if (!data?.length) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-base font-bold text-muted-foreground whitespace-nowrap">
-          {title}:
-        </span>
-        <span className="text-base font-medium text-muted-foreground">
-          No hay registros
-        </span>
+        {title && (
+          <>
+            <span className="text-base font-bold text-muted-foreground whitespace-nowrap">
+              {title}:
+            </span>
+            <span className="text-base font-medium text-muted-foreground">
+              No hay registros
+            </span>
+          </>
+        )}
+        {!title && (
+          <span className="text-base font-medium text-muted-foreground">
+            {emptyMessage || "No hay registros"}
+          </span>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="text-base font-bold text-muted-foreground whitespace-nowrap">
-        {title}:
-      </div>
+      {title && (
+        <div className="text-base font-bold text-muted-foreground whitespace-nowrap">
+          {title}:
+        </div>
+      )}
       <div className="rounded-md border">
         <div className="relative w-full overflow-auto">
           <table className="w-full caption-bottom text-sm">

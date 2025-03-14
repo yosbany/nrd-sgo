@@ -1,45 +1,93 @@
 import React from 'react';
-import { isValid, format } from 'date-fns';
-import { cn, formatDateToDisplay, formatDateToServer, parseDate } from '@/lib/utils';
+import { parseISO } from 'date-fns';
+import { cn, formatDateToDisplay } from '@/lib/utils';
 import { Calendar } from 'lucide-react';
 
-interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
+interface DatePickerProps {
   label?: string;
   error?: string;
   containerClassName?: string;
   value?: string | Date;
   onChange?: (value: string) => void;
+  defaultValue?: string | Date;
+  id?: string;
+  name?: string;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
 }
 
 export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
-  ({ className, label, error, containerClassName, value, onChange, ...props }, ref) => {
+  ({ className, label, error, containerClassName, value, onChange, defaultValue, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
+
+    // Función auxiliar para convertir cualquier fecha a objeto Date
+    const toDate = (dateValue: Date | string): Date | null => {
+      try {
+        if (dateValue instanceof Date) {
+          return dateValue;
+        }
+        
+        if (typeof dateValue === 'string') {
+          if (dateValue.includes('GMT')) {
+            // Extraer la parte de la fecha del string GMT
+            const dateMatch = dateValue.match(/(\w+)\s+(\w+)\s+(\d+)\s+(\d+)/);
+            if (dateMatch) {
+              const [, , month, date, year] = dateMatch;
+              // Convertir el nombre del mes a número
+              const monthMap: { [key: string]: number } = {
+                Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+              };
+              const monthNum = monthMap[month];
+              if (monthNum !== undefined) {
+                // Crear la fecha en zona horaria local
+                return new Date(Number(year), monthNum, Number(date));
+              }
+            }
+          } else if (dateValue.includes('T')) {
+            return parseISO(dateValue);
+          }
+          // Para fechas en formato YYYY-MM-DD, crear en zona horaria local
+          const [year, month, day] = dateValue.split('-').map(Number);
+          return new Date(year, month - 1, day);
+        }
+        
+        return new Date(dateValue);
+      } catch (error) {
+        console.error('Error converting to date:', error);
+        return null;
+      }
+    };
 
     // Convertir el valor a formato YYYY-MM-DD para el input nativo
     const inputValue = React.useMemo(() => {
-      if (!value) return '';
-      try {
-        const dateObj = typeof value === 'string' ? parseDate(value) : value;
-        if (!dateObj) return '';
-        return format(dateObj, 'yyyy-MM-dd');
-      } catch {
-        return '';
-      }
-    }, [value]);
+      const dateValue = value || defaultValue;
+      if (!dateValue) return '';
+      const date = toDate(dateValue);
+      if (!date) return '';
+      // Usar métodos locales para mantener consistencia con la zona horaria
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }, [value, defaultValue]);
 
     // Convertir el valor a formato de visualización dd/MM/yyyy
     const displayValue = React.useMemo(() => {
-      return formatDateToDisplay(value);
-    }, [value]);
+      const dateValue = value || defaultValue;
+      if (!dateValue) return '';
+      const date = toDate(dateValue);
+      if (!date) return '';
+      return formatDateToDisplay(date);
+    }, [value, defaultValue]);
 
     // Manejar el cambio de fecha
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       if (onChange) {
-        // Convertir la fecha seleccionada a formato ISO preservando la fecha local
-        const [year, month, day] = newValue.split('-').map(Number);
-        const date = new Date(year, month - 1, day, 12); // Usar hora 12 para evitar problemas con zonas horarias
-        onChange(date.toISOString());
+        // El valor ya viene en formato YYYY-MM-DD, lo pasamos directamente
+        onChange(newValue);
       }
     };
 
@@ -68,7 +116,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
               "text-sm ring-offset-background cursor-pointer",
               "hover:bg-accent hover:text-accent-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              !value && "text-muted-foreground",
+              !value && !defaultValue && "text-muted-foreground",
               error && "border-destructive focus-visible:ring-destructive",
               className
             )}

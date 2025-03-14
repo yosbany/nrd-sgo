@@ -2,15 +2,14 @@ import { Database } from 'firebase/database';
 import { CustomerOrder } from '../models/customer-order.model';
 import { ICustomerOrderRepository } from './interfaces/customer-order.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
-import { OrderStatus } from '../models/base.entity';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export class CustomerOrderRepositoryImpl extends BaseRepositoryImpl<CustomerOrder> implements ICustomerOrderRepository {
   protected modelProperties: (keyof CustomerOrder)[] = [
     'orderDate',
     'status',
     'customerId',
-    'products',
-    'recipes',
+    'items',
     'totalItems',
     'totalProducts'
   ];

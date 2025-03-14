@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { QuantityInput } from '@/presentation/components/QuantityInput';
 import { DatePicker } from '@/presentation/components/ui/date-picker';
-import { OrderStatus, OrderStatusLabel } from '@/domain/models/order-status.enum';
+import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 export const MobileProductionForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();

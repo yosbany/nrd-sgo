@@ -1,0 +1,158 @@
+@media print {
+  .printContainer {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    width: 80mm;
+    margin: 0;
+    padding: 10px;
+    font-weight: bold;
+  }
+
+  .ticket {
+    text-align: left;
+  }
+
+  .orderNumber {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .date {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+
+  .businessName {
+    margin: 0;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .contact {
+    font-size: 12px;
+    margin: 5px 0;
+  }
+
+  .line {
+    border-top: 1px dashed black;
+    margin: 5px 0;
+  }
+
+  .itemsTable {
+    width: 100%;
+    text-align: left;
+    table-layout: auto;
+  }
+
+  .itemQuantity {
+    padding: 5px;
+    padding-right: 15px;
+    font-size: 14px;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  .itemDescription {
+    padding: 5px;
+    padding-left: 0;
+    font-size: 14px;
+    vertical-align: top;
+    word-wrap: break-word;
+    position: relative;
+  }
+
+  .itemDescription::before {
+    content: "•";
+    position: absolute;
+    left: -10px;
+  }
+
+  .totals {
+    font-size: 14px;
+    margin: 5px 0;
+  }
+
+  .spacer {
+    height: 30px;
+  }
+}
+
+/* Preview styles - same as print styles for consistency */
+.printContainer {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  width: 80mm;
+  margin: 0;
+  padding: 10px;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  background-color: white;
+}
+
+.ticket {
+  text-align: left;
+}
+
+.orderNumber {
+  margin: 0;
+  font-size: 18px;
+}
+
+.date {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.businessName {
+  margin: 0;
+  font-size: 12px;
+  text-align: left;
+}
+
+.contact {
+  font-size: 12px;
+  margin: 5px 0;
+}
+
+.line {
+  border-top: 1px dashed black;
+  margin: 5px 0;
+}
+
+.itemsTable {
+  width: 100%;
+  text-align: left;
+  table-layout: auto;
+}
+
+.itemQuantity {
+  padding: 5px;
+  padding-right: 15px;
+  font-size: 14px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.itemDescription {
+  padding: 5px;
+  padding-left: 0;
+  font-size: 14px;
+  vertical-align: top;
+  word-wrap: break-word;
+  position: relative;
+}
+
+.itemDescription::before {
+  content: "•";
+  position: absolute;
+  left: -10px;
+}
+
+.totals {
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.spacer {
+  height: 30px;
+} 

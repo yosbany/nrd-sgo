@@ -1,19 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/presentation/components/ui/button';
-import { Card } from '@/presentation/components/ui/card';
 import { Plus, Pencil, Trash2, Eye, Search, Printer } from 'lucide-react';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
 import { BaseEntity } from '@/domain/models/base.entity';
 import { toast } from 'sonner';
 import { Input } from '@/presentation/components/ui/input';
 import { formatDateToDisplay } from '@/lib/utils';
-import { OrderTextFormatter } from '@/presentation/components/OrderTextFormatter';
-import { CustomerOrder } from '@/domain/models/customer-order.model';
-import { ProductionOrder } from '@/domain/models/production-order.model';
-import { PurchaseOrder } from '@/domain/models/purchase-order.model';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from './ConfirmDialog';
+import { PageHeader } from './PageHeader';
+import { useLogger } from '@/lib/logger';
 
 interface TagConfig {
   value: string | number;
@@ -33,16 +30,12 @@ interface Column<T> {
 interface GenericListProps<T extends BaseEntity> {
   columns: Column<T>[];
   title: string;
-  addPath: string;
+  addPath?: string;
+  onAddClick?: () => void;
   backPath?: string;
   service: BaseService<T>;
   type?: 'customer' | 'production' | 'purchase';
-  products?: any[];
-  recipes?: any[];
-  customerName?: Record<string, string>;
-  workerName?: Record<string, string>;
-  supplierName?: Record<string, string>;
-  units?: Record<string, string>;
+  onPrint?: (item: T) => void;
 }
 
 const Tag: React.FC<{ config: TagConfig }> = ({ config }) => {
@@ -79,16 +72,12 @@ export function GenericList<T extends BaseEntity>({
   columns,
   title,
   addPath,
+  onAddClick,
   backPath,
   service,
-  type,
-  products,
-  recipes,
-  customerName,
-  workerName,
-  supplierName,
-  units,
+  onPrint,
 }: GenericListProps<T>) {
+  const log = useLogger('GenericList');
   const [items, setItems] = React.useState<T[]>([]);
   const [filteredItems, setFilteredItems] = React.useState<T[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -96,18 +85,97 @@ export function GenericList<T extends BaseEntity>({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
+  // Memoize service and title to prevent unnecessary re-renders
+  const memoizedService = React.useMemo(() => service, []);
+  const memoizedTitle = React.useMemo(() => title, []);
+
+  const actionsColumn = {
+    header: 'Acciones',
+    accessor: 'actions' as keyof T,
+    render: (item: T) => (
+      <div className="flex gap-2 justify-end">
+        {onPrint && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrint(item);
+            }}
+          >
+            <Printer className="h-4 w-4" />
+          </Button>
+        )}
+        <Link to={`${backPath || ''}/${item.id}`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Ver detalles"
+          >
+            <Eye className="h-5 w-5" />
+          </Button>
+        </Link>
+        <Link to={`${backPath || ''}/${item.id}/edit`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Editar"
+          >
+            <Pencil className="h-5 w-5" />
+          </Button>
+        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:text-destructive"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (item.id) {
+              handleDeleteClick(item.id);
+            }
+          }}
+          title="Eliminar"
+        >
+          <Trash2 className="h-5 w-5" />
+        </Button>
+      </div>
+    ),
+  };
+
+  // Asegurar que el campo nro siempre sea la primera columna
+  const nroColumn: Column<T> = {
+    header: '#',
+    accessor: 'nro' as keyof T,
+    type: 'text',
+    searchable: true,
+  };
+
+  // Filtrar el campo nro de las columnas existentes si ya existe
+  const filteredColumns = columns.filter(col => col.accessor !== 'nro');
+
+  // Combinar las columnas con nro al inicio
+  const allColumns = [nroColumn, ...filteredColumns, actionsColumn];
+
   const loadItems = React.useCallback(async () => {
     try {
-      const data = await service.findAll();
+      // Solo logear si no estamos cargando
+      if (!isLoading) {
+        log.info('Cargando items', { title: memoizedTitle });
+      }
+      const data = await memoizedService.findAll();
       setItems(data);
       setFilteredItems(data);
+      log.debug('Items cargados exitosamente', { count: data.length });
     } catch (error) {
-      console.error('Error al cargar los datos:', error);
+      log.error('Error al cargar los datos', { error, title: memoizedTitle });
       toast.error('Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
-  }, [service]);
+  }, [memoizedService, memoizedTitle, isLoading, log]);
 
   React.useEffect(() => {
     loadItems();
@@ -119,103 +187,41 @@ export function GenericList<T extends BaseEntity>({
       return;
     }
 
+    log.debug('Filtrando items', { searchTerm, totalItems: items.length });
     const searchableColumns = columns.filter(col => col.searchable !== false);
     const filtered = items.filter(item => {
       return searchableColumns.some(column => {
         const value = column.render
-          ? column.render(item)?.toString()
+          ? String(column.render(item))
           : String(item[column.accessor] ?? '');
-        return value?.toLowerCase().includes(searchTerm.toLowerCase());
+        return value.toLowerCase().includes(searchTerm.toLowerCase());
       });
     });
 
+    log.debug('Filtrado completado', { 
+      filteredCount: filtered.length,
+      searchableColumns: searchableColumns.length 
+    });
     setFilteredItems(filtered);
-  }, [searchTerm, items, columns]);
+  }, [searchTerm, items, columns, log]);
 
   const handleDelete = async (id: string) => {
     try {
-      await service.delete(id);
+      log.info('Eliminando item', { id, title: memoizedTitle });
+      await memoizedService.delete(id);
+      log.debug('Item eliminado exitosamente', { id });
       toast.success('Registro eliminado exitosamente');
       loadItems();
     } catch (error) {
-      console.error('Error al eliminar el registro:', error);
+      log.error('Error al eliminar el registro', { error, id, title: memoizedTitle });
       toast.error('Error al eliminar el registro');
     }
   };
 
   const handleDeleteClick = (id: string) => {
+    log.debug('Iniciando proceso de eliminación', { id });
     setItemToDelete(id);
     setDeleteDialogOpen(true);
-  };
-
-  const handlePrint = (item: T) => {
-    if (!type) return;
-
-    // Verificar que el item sea una orden válida
-    const isOrder = (
-      'orderDate' in item &&
-      'status' in item &&
-      (
-        ('customerId' in item) ||
-        ('responsibleWorkerId' in item) ||
-        ('supplierId' in item)
-      )
-    );
-
-    if (!isOrder) return;
-
-    const order = item as unknown as CustomerOrder | ProductionOrder | PurchaseOrder;
-    const text = new OrderTextFormatter({
-      order,
-      type,
-      units: Object.entries(units || {}).map(([id, name]) => ({ id, name: name as string })),
-      customerName: type === 'customer' && customerName ? customerName[(order as CustomerOrder).customerId] : undefined,
-      workerName: type === 'production' && workerName ? workerName[(order as ProductionOrder).responsibleWorkerId] : undefined,
-      supplierName: type === 'purchase' && supplierName ? supplierName[(order as PurchaseOrder).supplierId] : undefined,
-      products,
-      recipes,
-      format: 'print'
-    }).toString();
-
-    // Crear un elemento temporal para imprimir
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('No se pudo abrir la ventana de impresión');
-      return;
-    }
-
-    // Estilo para impresión de 80mm
-    printWindow.document.write(`
-      <html>
-        <head>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            body {
-              font-family: monospace;
-              font-size: 12px;
-              padding: 10px;
-              white-space: pre-wrap;
-              width: 80mm;
-              text-align: left;
-            }
-            div {
-              text-align: left;
-              margin: 0;
-              padding: 0;
-            }
-          </style>
-        </head>
-        <body>
-          ${text.replace(/\n/g, '<br>')}
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.print();
   };
 
   const renderCellContent = (item: T, column: Column<T>) => {
@@ -248,7 +254,97 @@ export function GenericList<T extends BaseEntity>({
   }
 
   return (
-    <div className="min-h-[80vh] flex flex-col gap-6">
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title={title}
+        subtitle={`Lista de ${title.toLowerCase()}`}
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[300px] pl-9"
+              />
+              <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+            </div>
+            {onAddClick ? (
+              <Button onClick={onAddClick}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo
+              </Button>
+            ) : addPath ? (
+              <Link to={addPath}>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo
+                </Button>
+              </Link>
+            ) : null}
+          </div>
+        }
+      />
+
+      <div className="flex-1 p-4">
+        <div className="rounded-md border">
+          <div className="relative w-full overflow-auto">
+            <table className="w-full caption-bottom text-sm">
+              <thead className="[&_tr]:border-b bg-muted/50">
+                <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                  {allColumns.map((column, index) => (
+                    <th
+                      key={index}
+                      className={cn(
+                        "h-10 px-2 text-left align-middle font-medium text-muted-foreground",
+                        column.header === 'Acciones' && "text-right",
+                        column.header === '#' && "w-[60px] text-center"
+                      )}
+                    >
+                      {column.header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={allColumns.length}
+                      className="p-2 text-center text-muted-foreground"
+                    >
+                      {searchTerm.trim() !== ''
+                        ? `No se encontraron ${title.toLowerCase()} que coincidan con la búsqueda`
+                        : `No hay ${title.toLowerCase()} registrados`}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredItems.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                    >
+                      {allColumns.map((column, index) => (
+                        <td
+                          key={index}
+                          className={cn(
+                            "p-2 align-middle",
+                            column.header === '#' && "text-center font-medium"
+                          )}
+                        >
+                          {renderCellContent(item, column as Column<T>)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -258,130 +354,6 @@ export function GenericList<T extends BaseEntity>({
         confirmText="Eliminar"
         variant="destructive"
       />
-
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-          <p className="text-sm text-muted-foreground">
-            Lista de {title.toLowerCase()}
-          </p>
-        </div>
-        <Link to={addPath}>
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Button>
-        </Link>
-      </div>
-
-      <Card>
-        <div className="p-4">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9"
-            />
-            <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="relative w-full overflow-auto">
-          <table className="w-full caption-bottom text-sm">
-            <thead className="[&_tr]:border-b">
-              <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                {columns.map((column, index) => (
-                  <th
-                    key={index}
-                    className="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
-                  >
-                    {column.header}
-                  </th>
-                ))}
-                <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="[&_tr:last-child]:border-0">
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length + 1}
-                    className="p-4 text-center text-muted-foreground"
-                  >
-                    {searchTerm.trim() !== ''
-                      ? `No se encontraron ${title.toLowerCase()} que coincidan con la búsqueda`
-                      : `No hay ${title.toLowerCase()} registrados`}
-                  </td>
-                </tr>
-              ) : (
-                filteredItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-                  >
-                    {columns.map((column, index) => (
-                      <td key={index} className="p-4 align-middle">
-                        {renderCellContent(item, column)}
-                      </td>
-                    ))}
-                    <td className="p-4 align-middle text-right">
-                      <div className="flex justify-end gap-2">
-                        <Link to={`${backPath || ''}/${item.id}`}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Ver detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <Link to={`${backPath || ''}/${item.id}/edit`}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        {type && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handlePrint(item)}
-                            title="Imprimir"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:text-destructive"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleDeleteClick(item.id.toString());
-                          }}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
     </div>
   );
 } 
