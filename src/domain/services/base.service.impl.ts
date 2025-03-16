@@ -27,7 +27,11 @@ export abstract class BaseServiceImpl<T extends BaseEntity, R extends IBaseRepos
 
   async create(entity: Omit<T, 'id' | 'nro' | 'createdAt' | 'updatedAt'>): Promise<T> {
     const now = new Date();
-    const nro = await sequenceService.getNextNumber(this.modelName);
+    
+    // Solo generar número de secuencia si no es el modelo de secuencias
+    const nro = this.modelName === 'sequences' 
+      ? crypto.randomUUID() 
+      : await sequenceService.getNextNumber(this.modelName);
     
     const newEntity = {
       ...entity,

@@ -1,15 +1,6 @@
+import { EntityStatus } from "../enums/entity-status.enum";
+import { Sector } from "../enums/sector.enum";
 import { BaseEntity } from "./base.entity";
-import { SupplierStatus } from "./supplier.model";
-
-export enum ProductStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive'
-}
-
-export enum ProductSector {
-  GENERAL = 'general',
-  OTHER = 'other'
-}
 
 export type PriceChangeType = 'purchase' | 'sale';
 
@@ -25,14 +16,6 @@ export interface PriceHistory {
   type: PriceChangeType;
 }
 
-export interface SupplierInfo {
-  id: string;
-  commercialName: string;
-  email: string;
-  phone: string;
-  status: SupplierStatus;
-}
-
 export interface Product extends BaseEntity {
   name: string;
   sku: string;
@@ -42,16 +25,16 @@ export interface Product extends BaseEntity {
   materialName?: string;
   materialCode?: string;
   salePrice: number;
-  state: ProductStatus;
+  status: EntityStatus;
   salesUnitCost?: number;
   materialUnitCost?: number;
   purchasePrice?: number;
   salesUnitId?: string;
+  nameSale: string;
   materialUnitId?: string;
   purchaseUnitId?: string;
   primarySupplierId?: string;
-  primarySupplier?: SupplierInfo;
-  sector?: ProductSector;
+  sector: Sector;
   sectorOrder?: number;
   desiredStock?: number;
   salesChannels?: SaleChannel[];

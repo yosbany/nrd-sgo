@@ -3,10 +3,11 @@ import { GenericList } from '../../components/common/GenericList';
 import { Worker } from '../../../domain/models/worker.model';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RoleServiceImpl } from '../../../domain/services/role.service.impl';
+import { getStatusOptions } from '../../../domain/enums/entity-status.enum';
 
 export function WorkerList() {
   const workerService = new WorkerServiceImpl();
-  const roleService = new RoleServiceImpl();
+  const roleService = React.useMemo(() => new RoleServiceImpl(), []);
   const [roles, setRoles] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
@@ -14,12 +15,12 @@ export function WorkerList() {
       const rolesData = await roleService.findAll();
       const rolesMap = rolesData.reduce((acc, role) => ({
         ...acc,
-        [role.id]: role.name
-      }), {});
+        [role.id as string]: role.name
+      }), {} as Record<string, string>);
       setRoles(rolesMap);
     };
     loadRoles();
-  }, []);
+  }, [roleService]);
 
   const calculateYearsOfService = (hireDate: Date) => {
     const today = new Date();
@@ -50,6 +51,12 @@ export function WorkerList() {
       accessor: 'primaryRoleId' as keyof Worker,
       render: (item: Worker) => roles[item.primaryRoleId] || 'Rol no encontrado',
     },
+    {
+      header: 'Estado',
+      accessor: 'status' as keyof Worker,
+      type: 'tag' as const,
+      tags: getStatusOptions()
+    }
   ];
 
   return (

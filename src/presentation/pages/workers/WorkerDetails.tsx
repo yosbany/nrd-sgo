@@ -9,7 +9,7 @@ import { RoleServiceImpl } from '../../../domain/services/role.service.impl';
 export function WorkerDetails() {
   const { id } = useParams<{ id: string }>();
   const workerService = new WorkerServiceImpl();
-  const roleService = new RoleServiceImpl();
+  const roleService = React.useMemo(() => new RoleServiceImpl(), []);
   const [roles, setRoles] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
@@ -17,12 +17,12 @@ export function WorkerDetails() {
       const rolesData = await roleService.findAll();
       const rolesMap = rolesData.reduce((acc, role) => ({
         ...acc,
-        [role.id]: role.name
+        [role.id as string]: role.name
       }), {});
       setRoles(rolesMap);
     };
     loadRoles();
-  }, []);
+  }, [roleService]);
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('es-UY', {

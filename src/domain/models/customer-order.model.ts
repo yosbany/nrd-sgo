@@ -9,11 +9,11 @@ export interface ItemOrder {
 }
 
 export interface CustomerOrder extends BaseEntity {
+  nro: string;
   orderDate: Date;
   status: OrderStatus;
   customerId: string;
   items: ItemOrder[];
   totalProducts: number;
   totalItems: number;
-  
 } 

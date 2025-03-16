@@ -1,3 +1,4 @@
+import { EntityStatus } from '../enums/entity-status.enum';
 import { BaseEntity } from './base.entity';
 
 export interface UnitConversion {
@@ -11,4 +12,5 @@ export interface Unit extends BaseEntity {
   name: string;
   symbol: string;
   conversions?: UnitConversion[];
+  status: EntityStatus;
 }

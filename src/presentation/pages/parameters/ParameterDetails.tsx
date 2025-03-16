@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { Parameter } from '../../../domain/models/parameter.model';
@@ -12,7 +11,7 @@ export function ParameterDetails() {
     { label: 'Nombre', value: parameter.name },
     { label: 'Código', value: parameter.code },
     { label: 'Valor', value: parameter.value },
-    { label: 'Descripción', value: parameter.description || '-' },
+    { label: 'Descripción', value: parameter.description, colSpan: 2 },
   ];
 
   if (!id) return null;

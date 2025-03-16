@@ -8,7 +8,7 @@ import { SupplierServiceImpl } from '../../../domain/services/supplier.service.i
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
-import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
+import { OrderStatusLabel } from '@/domain/enums/order-status.enum';
 
 export function PurchaseOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -28,19 +28,19 @@ export function PurchaseOrderDetails() {
         unitService.findAll()
       ]);
 
-      const suppliersMap = suppliersData.reduce((acc, supplier) => ({
+      const suppliersMap = suppliersData.reduce<Record<string, string>>((acc, supplier) => ({
         ...acc,
-        [supplier.id]: supplier.commercialName
+        [supplier.id as string]: supplier.commercialName
       }), {});
 
-      const productsMap = productsData.reduce((acc, product) => ({
+      const productsMap = productsData.reduce<Record<string, Product>>((acc, product) => ({
         ...acc,
-        [product.id]: product
+        [product.id as string]: product
       }), {});
 
-      const unitsMap = unitsData.reduce((acc, unit) => ({
+      const unitsMap = unitsData.reduce<Record<string, string>>((acc, unit) => ({
         ...acc,
-        [unit.id]: unit.name
+        [unit.id as string]: unit.name
       }), {});
 
       setSuppliers(suppliersMap);
@@ -82,9 +82,9 @@ export function PurchaseOrderDetails() {
     { label: 'Proveedor', value: suppliers[order.supplierId] || 'Proveedor no encontrado' },
     { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
-    { label: 'Productos', value: renderProducts(order.products) },
-    { label: 'Total de Items', value: order.totalItems },
     { label: 'Total de Productos', value: order.totalProducts },
+    { label: 'Total de Items', value: order.totalItems },
+    { label: 'Productos', value: renderProducts(order.products) },
   ];
 
   if (!id) return null;

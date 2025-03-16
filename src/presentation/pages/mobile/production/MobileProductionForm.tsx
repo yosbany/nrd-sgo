@@ -187,7 +187,7 @@ export const MobileProductionForm: React.FC = () => {
               onClick={() => setIsGeneralOpen(!isGeneralOpen)}
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Información General</span>
+                <span className="text-sm font-bold uppercase">INFORMACIÓN GENERAL</span>
                 {!isGeneralOpen && (
                   <span className="text-xs text-gray-500">
                     {formData.responsibleWorkerId ? workers.find(w => w.id === formData.responsibleWorkerId)?.name : 'Sin asignar'}
@@ -389,13 +389,13 @@ export const MobileProductionForm: React.FC = () => {
                               <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-600">Costo unitario:</span>
                                 <span className="font-medium">
-                                  ${recipe.cost.toFixed(2)}
+                                  ${(recipe.cost || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Total:</span>
                                 <span className="font-semibold text-blue-600">
-                                  ${(recipe.cost * existingItem.quantity).toFixed(2)}
+                                  ${((recipe.cost || 0) * existingItem.quantity).toFixed(2)}
                                 </span>
                               </div>
                             </div>

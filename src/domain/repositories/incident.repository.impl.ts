@@ -1,17 +1,19 @@
 import { Database } from 'firebase/database';
-import { Incident, IncidentType, IncidentStatus } from '../models/incident.model';
+import { Incident } from '../models/incident.model';
 import { IIncidentRepository } from './interfaces/incident.repository.interface';
 import { BaseRepositoryImpl } from './base.repository.impl';
+import { IncidentType } from '../enums/type-incident.enum';
+import { IncidentStatus } from '../enums/incident-status.enum';
 
 export class IncidentRepositoryImpl extends BaseRepositoryImpl<Incident> implements IIncidentRepository {
   protected modelProperties: (keyof Incident)[] = [
     'type',
     'description',
-    'reportedByWorkerId',
     'status',
     'taskId',
-    'productId',
-    'recipeId'
+    'products',
+    'recipeId',
+    'date'
   ];
 
   constructor(db: Database) {
@@ -24,9 +26,5 @@ export class IncidentRepositoryImpl extends BaseRepositoryImpl<Incident> impleme
 
   async findByStatus(status: IncidentStatus): Promise<Incident[]> {
     return this.findByField('status', status);
-  }
-
-  async findByReportedBy(workerId: string): Promise<Incident[]> {
-    return this.findByField('reportedByWorkerId', workerId);
   }
 } 

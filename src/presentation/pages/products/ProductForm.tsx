@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericForm, Field, RelatedService } from '../../components/common/GenericForm';
-import { Product, ProductSector, ProductStatus } from '../../../domain/models/product.model';
+import { Product } from '../../../domain/models/product.model';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
@@ -14,15 +14,15 @@ import {
   Package2, 
   LayoutGrid
 } from 'lucide-react';
+import { getOptions } from '@/domain/enums/entity-status.enum';
+import { getOptions as getSectorOptions } from '@/domain/enums/sector.enum';
 
-interface UnitMap {
-  [key: string]: Unit;
-}
+
 
 export function ProductForm() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = React.useState<Partial<Product>>({});
-  const productService = new ProductServiceImpl();
+  const productService = React.useMemo(() => new ProductServiceImpl(), []);
   const unitService = new UnitServiceImpl();
 
   React.useEffect(() => {
@@ -33,7 +33,7 @@ export function ProductForm() {
         }
       });
     }
-  }, [id]);
+  }, [id, productService]);
 
   const sections = [
     {
@@ -58,14 +58,11 @@ export function ProductForm() {
           type: 'text' as const,
         },
         {
-          name: 'state',
+          name: 'status',
           label: 'Estado',
           type: 'select' as const,
           required: true,
-          options: [
-            { value: ProductStatus.ACTIVE, label: 'Activo' },
-            { value: ProductStatus.INACTIVE, label: 'Inactivo' },
-          ],
+          options: getOptions(),
         },
         {
           name: 'isForSale',
@@ -119,6 +116,12 @@ export function ProductForm() {
       icon: <Store className="h-5 w-5" />,
       fields: [
         {
+          name: 'nameSale',
+          label: 'Nombre de Venta',
+          type: 'text' as const,
+          placeholder: 'Nombre para mostrar en ventas',
+        },
+        {
           name: 'salePrice',
           label: 'Precio de Venta',
           type: 'number' as const,
@@ -171,10 +174,7 @@ export function ProductForm() {
           name: 'sector',
           label: 'Sector',
           type: 'select' as const,
-          options: [
-            { value: ProductSector.GENERAL, label: 'General' },
-            { value: ProductSector.OTHER, label: 'Otro' },
-          ],
+          options: getSectorOptions(),
         },
         {
           name: 'sectorOrder',

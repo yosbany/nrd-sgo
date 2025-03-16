@@ -2,19 +2,20 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { ArrayTable } from '../../components/common/ArrayTable';
-import { Material, Recipe, RecipeType, YieldUnit } from '../../../domain/models/recipe.model';
+import { Material, Recipe } from '../../../domain/models/recipe.model';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { Product } from '../../../domain/models/product.model';
+import { getLabel, RecipeType } from '@/domain/enums/recipe-type.enum';
 
 export function RecipeDetails() {
   const { id } = useParams<{ id: string }>();
-  const recipeService = new RecipeServiceImpl();
-  const workerService = new WorkerServiceImpl();
-  const unitService = new UnitServiceImpl();
-  const productService = new ProductServiceImpl();
+  const recipeService = React.useMemo(() => new RecipeServiceImpl(), []);
+  const workerService = React.useMemo(() => new WorkerServiceImpl(), []);
+  const unitService = React.useMemo(() => new UnitServiceImpl(), []);
+  const productService = React.useMemo(() => new ProductServiceImpl(), []);
   const [workers, setWorkers] = React.useState<Record<string, string>>({});
   const [units, setUnits] = React.useState<Record<string, string>>({});
   const [products, setProducts] = React.useState<Record<string, Product>>({});
@@ -31,22 +32,22 @@ export function RecipeDetails() {
 
       const workersMap = workersData.reduce((acc, worker) => ({
         ...acc,
-        [worker.id]: worker.name
+        [worker.id as string]: worker.name
       }), {});
 
       const unitsMap = unitsData.reduce((acc, unit) => ({
         ...acc,
-        [unit.id]: unit.name
+        [unit.id as string]: unit.name
       }), {});
 
       const productsMap = productsData.reduce((acc, product) => ({
         ...acc,
-        [product.id]: product
+        [product.id as string]: product
       }), {});
 
       const recipesMap = recipesData.reduce((acc, recipe) => ({
         ...acc,
-        [recipe.id]: recipe
+        [recipe.id as string]: recipe
       }), {});
 
       setWorkers(workersMap);
@@ -55,29 +56,7 @@ export function RecipeDetails() {
       setRecipes(recipesMap);
     };
     loadData();
-  }, []);
-
-  const getRecipeTypeLabel = (type: RecipeType) => {
-    switch (type) {
-      case RecipeType.SALE_RECIPE:
-        return 'Receta de Venta';
-      case RecipeType.INTERNAL_USE:
-        return 'Uso Interno';
-      default:
-        return type;
-    }
-  };
-
-  const getYieldUnitLabel = (unit: YieldUnit) => {
-    switch (unit) {
-      case YieldUnit.PIECES:
-        return 'Piezas';
-      case YieldUnit.KG:
-        return 'Kilogramos';
-      default:
-        return unit;
-    }
-  };
+  }, [productService, recipeService, unitService, workerService]);
 
   const renderMaterials = (materials: Recipe['materials']) => {
     const columns = [
@@ -120,15 +99,117 @@ export function RecipeDetails() {
     return <ArrayTable data={materials || []} columns={columns} emptyMessage="No hay materiales" />;
   };
 
-  const getFields = (recipe: Recipe) => [
-    { label: 'Nombre', value: recipe.name },
-    { label: 'Tipo', value: getRecipeTypeLabel(recipe.recipeType) },
-    { label: 'Unidad de Rendimiento', value: units[recipe.yieldUnitId] || 'Unidad no encontrada' },
-    { label: 'Rendimiento', value: recipe.yield },
-    { label: 'Trabajador Principal', value: workers[recipe.primaryWorkerId] || 'Trabajador no encontrado' },
-    { label: 'Notas', value: recipe.notes || '-' },
-    { label: 'Materiales', value: renderMaterials(recipe.materials) },
-  ];
+  const getFields = (recipe: Recipe) => {
+    const generalInfo = (
+      <div className="space-y-4">
+        <div className="flex flex-col space-y-1.5 pb-4 border-b">
+          <h3 className="text-lg font-semibold">Información General</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Nombre:</dt>
+            <dd className="text-base">{recipe.name}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Tipo:</dt>
+            <dd className="text-base">{getLabel(recipe.recipeType)}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Unidad de Rendimiento:</dt>
+            <dd className="text-base">{units[recipe.yieldUnitId] || 'Unidad no encontrada'}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Rendimiento:</dt>
+            <dd className="text-base">{recipe.yield}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Producción Deseada:</dt>
+            <dd className="text-base">{recipe.desiredProduction || '-'}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Trabajador Principal:</dt>
+            <dd className="text-base">{workers[recipe.primaryWorkerId] || 'Trabajador no encontrado'}</dd>
+          </div>
+        </div>
+      </div>
+    );
+
+    const saleInfo = recipe.recipeType === RecipeType.RECETA_VENTA ? (
+      <div className="space-y-4">
+        <div className="flex flex-col space-y-1.5 pb-4 border-b">
+          <h3 className="text-lg font-semibold">Información de Venta</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">SKU:</dt>
+            <dd className="text-base">{recipe.sku}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Nombre de Venta:</dt>
+            <dd className="text-base">{recipe.nameSale || '-'}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Precio de Venta:</dt>
+            <dd className="text-base">{recipe.salePrice?.toLocaleString('es-UY', {
+              style: 'currency',
+              currency: 'UYU',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }) || '-'}</dd>
+          </div>
+        </div>
+      </div>
+    ) : null;
+
+    const details = (
+      <div className="space-y-4">
+        <div className="flex flex-col space-y-1.5 pb-4 border-b">
+          <h3 className="text-lg font-semibold">Detalles</h3>
+        </div>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <dt className="text-base font-bold text-muted-foreground">Materiales</dt>
+            <dd>{renderMaterials(recipe.materials)}</dd>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+            <div className="flex items-center gap-2">
+              <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Total de Materiales:</dt>
+              <dd className="text-base">{recipe.totalMaterial}</dd>
+            </div>
+            <div className="flex items-center gap-2">
+              <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Total de Items:</dt>
+              <dd className="text-base">{recipe.totalItems}</dd>
+            </div>
+            <div className="flex items-center gap-2">
+              <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Costo Unitario:</dt>
+              <dd className="text-base">{recipe.unitCost?.toLocaleString('es-UY', {
+                style: 'currency',
+                currency: 'UYU',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }) || '-'}</dd>
+            </div>
+            {recipe.recipeType === RecipeType.RECETA_VENTA && (
+              <div className="flex items-center gap-2">
+                <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Margen:</dt>
+                <dd className="text-base">{recipe.margin ? `${recipe.margin}%` : '-'}</dd>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <dt className="text-base font-bold text-muted-foreground whitespace-nowrap">Notas:</dt>
+            <dd className="text-base">{recipe.notes || '-'}</dd>
+          </div>
+        </div>
+      </div>
+    );
+
+    return [
+      { label: '', value: generalInfo, colSpan: 3 },
+      ...(saleInfo ? [{ label: '', value: saleInfo, colSpan: 3 }] : []),
+      { label: '', value: details, colSpan: 3 }
+    ];
+  };
 
   if (!id) return null;
 

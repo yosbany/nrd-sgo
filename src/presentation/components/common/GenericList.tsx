@@ -10,7 +10,6 @@ import { formatDateToDisplay } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PageHeader } from './PageHeader';
-import { useLogger } from '@/lib/logger';
 
 interface TagConfig {
   value: string | number;
@@ -77,7 +76,6 @@ export function GenericList<T extends BaseEntity>({
   service,
   onPrint,
 }: GenericListProps<T>) {
-  const log = useLogger('GenericList');
   const [items, setItems] = React.useState<T[]>([]);
   const [filteredItems, setFilteredItems] = React.useState<T[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -85,9 +83,8 @@ export function GenericList<T extends BaseEntity>({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
-  // Memoize service and title to prevent unnecessary re-renders
-  const memoizedService = React.useMemo(() => service, []);
-  const memoizedTitle = React.useMemo(() => title, []);
+  const memoizedService = React.useMemo(() => service, [service]);
+  const memoizedTitle = React.useMemo(() => title, [title]);
 
   const actionsColumn = {
     header: 'Acciones',
@@ -163,19 +160,19 @@ export function GenericList<T extends BaseEntity>({
     try {
       // Solo logear si no estamos cargando
       if (!isLoading) {
-        log.info('Cargando items', { title: memoizedTitle });
+        console.log('Cargando items', { title: memoizedTitle });
       }
       const data = await memoizedService.findAll();
       setItems(data);
       setFilteredItems(data);
-      log.debug('Items cargados exitosamente', { count: data.length });
+      console.log('Items cargados exitosamente', { count: data.length });
     } catch (error) {
-      log.error('Error al cargar los datos', { error, title: memoizedTitle });
+      console.error('Error al cargar los datos', { error, title: memoizedTitle });
       toast.error('Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
-  }, [memoizedService, memoizedTitle, isLoading, log]);
+  }, [memoizedService, memoizedTitle, isLoading]);
 
   React.useEffect(() => {
     loadItems();
@@ -187,7 +184,7 @@ export function GenericList<T extends BaseEntity>({
       return;
     }
 
-    log.debug('Filtrando items', { searchTerm, totalItems: items.length });
+    console.log('Filtrando items', { searchTerm, totalItems: items.length });
     const searchableColumns = columns.filter(col => col.searchable !== false);
     const filtered = items.filter(item => {
       return searchableColumns.some(column => {
@@ -198,28 +195,28 @@ export function GenericList<T extends BaseEntity>({
       });
     });
 
-    log.debug('Filtrado completado', { 
+    console.log('Filtrado completado', { 
       filteredCount: filtered.length,
       searchableColumns: searchableColumns.length 
     });
     setFilteredItems(filtered);
-  }, [searchTerm, items, columns, log]);
+  }, [searchTerm, items, columns]);
 
   const handleDelete = async (id: string) => {
     try {
-      log.info('Eliminando item', { id, title: memoizedTitle });
+      console.log('Eliminando item', { id, title: memoizedTitle });
       await memoizedService.delete(id);
-      log.debug('Item eliminado exitosamente', { id });
+      console.log('Item eliminado exitosamente', { id });
       toast.success('Registro eliminado exitosamente');
       loadItems();
     } catch (error) {
-      log.error('Error al eliminar el registro', { error, id, title: memoizedTitle });
+      console.error('Error al eliminar el registro', { error, id, title: memoizedTitle });
       toast.error('Error al eliminar el registro');
     }
   };
 
   const handleDeleteClick = (id: string) => {
-    log.debug('Iniciando proceso de eliminación', { id });
+    console.log('Iniciando proceso de eliminación', { id });
     setItemToDelete(id);
     setDeleteDialogOpen(true);
   };
@@ -259,7 +256,7 @@ export function GenericList<T extends BaseEntity>({
         title={title}
         subtitle={`Lista de ${title.toLowerCase()}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="relative">
               <Input
                 type="text"
@@ -288,6 +285,21 @@ export function GenericList<T extends BaseEntity>({
       />
 
       <div className="flex-1 p-4">
+        <div className="flex justify-end mb-2">
+          <span className="text-sm text-muted-foreground">
+            {searchTerm.trim() !== '' ? (
+              <>
+                Filtrados: <span className="font-medium text-foreground">{filteredItems.length}</span>
+                <span className="mx-2">|</span>
+                Total: <span className="font-medium text-foreground">{items.length}</span>
+              </>
+            ) : (
+              <>
+                Total: <span className="font-medium text-foreground">{items.length} {items.length === 1 ? title.slice(0, -1).toLowerCase() : title.toLowerCase()}</span>
+              </>
+            )}
+          </span>
+        </div>
         <div className="rounded-md border">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm">

@@ -7,7 +7,6 @@ import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl'
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { Recipe } from '@/domain/models/recipe.model';
 import { OrderStatus } from '@/domain/enums/order-status.enum';
-import { useLogger } from '@/lib/logger';
 import { toast } from 'sonner';
 
 export function ProductionOrderForm() {
@@ -15,7 +14,6 @@ export function ProductionOrderForm() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
-  const log = useLogger('ProductionOrderForm');
   const [order, setOrder] = React.useState<Partial<ProductionOrder>>({
     orderDate: new Date(),
     status: OrderStatus.PENDIENTE,
@@ -35,16 +33,16 @@ export function ProductionOrderForm() {
         // Si hay un número de orden para copiar, usar el método copyOrder
         const copyNro = searchParams.get('copy');
         if (copyNro) {
-          log.info('Copiando orden existente', { copyNro });
+          console.log('Copiando orden existente', { copyNro });
           try {
             const copiedOrder = await orderService.copyOrder(copyNro);
             setOrder(copiedOrder);
             setRecipes(recipesData);
-            log.debug('Orden copiada exitosamente', { 
+            console.log('Orden copiada exitosamente', { 
               recipesCount: copiedOrder.recipes?.length || 0
             });
           } catch (error) {
-            log.error('Error al copiar orden', { error });
+            console.error('Error al copiar orden', { error });
             toast.error('La orden no existe o no se puede copiar');
             navigate('/production-orders');
             return;
@@ -52,10 +50,35 @@ export function ProductionOrderForm() {
           return;
         }
 
+        // Si estamos en modo edición, cargar la orden existente
+        if (id) {
+          console.log('Cargando orden existente', { id });
+          try {
+            const existingOrder = await orderService.findById(id);
+            if (existingOrder) {
+              console.log('Orden cargada exitosamente', { 
+                recipesCount: existingOrder.recipes?.length || 0
+              });
+              setOrder(existingOrder);
+              setRecipes(recipesData);
+            } else {
+              console.warn('Orden no encontrada', { id });
+              toast.error('La orden no existe');
+              navigate('/production-orders');
+              return;
+            }
+          } catch (error) {
+            console.error('Error al cargar la orden', { error });
+            toast.error('Error al cargar la orden');
+            navigate('/production-orders');
+            return;
+          }
+        }
+
         // Para órdenes normales, cargar todas las recetas
         setRecipes(recipesData);
       } catch (error) {
-        log.error('Error al cargar datos iniciales', { error });
+        console.error('Error al cargar datos iniciales', { error });
         toast.error('Error al cargar los datos');
       } finally {
         setIsLoading(false);
@@ -63,7 +86,7 @@ export function ProductionOrderForm() {
     };
 
     loadInitialData();
-  }, [id, orderService, recipeService, searchParams, log, navigate]);
+  }, [id, orderService, recipeService, searchParams, navigate]);
 
   const fields = React.useMemo(() => {
     // Si es una orden copiada, mostrar solo empleado, fecha e items
@@ -111,10 +134,28 @@ export function ProductionOrderForm() {
                   label: 'Receta',
                   type: 'select' as const,
                   required: true,
-                  options: recipes.map(recipe => ({
-                    value: recipe.id || '',
-                    label: recipe.name
-                  }))
+                  options: recipes
+                    .filter(recipe => {
+                      // Obtener los IDs de las recetas ya agregadas
+                      const existingRecipeIds = new Set(
+                        (order.recipes || []).map(r => r.recipeId)
+                      );
+                      // Filtrar la receta si no está en la lista de recetas ya agregadas
+                      return !existingRecipeIds.has(recipe.id || '');
+                    })
+                    .map(recipe => ({
+                      value: recipe.id || '',
+                      label: recipe.name
+                    })),
+                  onChange: (value: unknown) => {
+                    const selectedRecipe = recipes.find(r => r.id === value);
+                    if (selectedRecipe?.desiredProduction) {
+                      return {
+                        quantity: selectedRecipe.desiredProduction
+                      };
+                    }
+                    return {};
+                  }
                 },
                 {
                   name: 'quantity',
@@ -196,10 +237,28 @@ export function ProductionOrderForm() {
                 label: 'Receta',
                 type: 'select' as const,
                 required: true,
-                options: recipes.map(recipe => ({
-                  value: recipe.id || '',
-                  label: recipe.name
-                }))
+                options: recipes
+                  .filter(recipe => {
+                    // Obtener los IDs de las recetas ya agregadas
+                    const existingRecipeIds = new Set(
+                      (order.recipes || []).map(r => r.recipeId)
+                    );
+                    // Filtrar la receta si no está en la lista de recetas ya agregadas
+                    return !existingRecipeIds.has(recipe.id || '');
+                  })
+                  .map(recipe => ({
+                    value: recipe.id || '',
+                    label: recipe.name
+                  })),
+                onChange: (value: unknown) => {
+                  const selectedRecipe = recipes.find(r => r.id === value);
+                  if (selectedRecipe?.desiredProduction) {
+                    return {
+                      quantity: selectedRecipe.desiredProduction
+                    };
+                  }
+                  return {};
+                }
               },
               {
                 name: 'quantity',

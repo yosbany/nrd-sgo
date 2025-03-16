@@ -22,14 +22,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/presentation/components/ui/form";
-import { useForm, DefaultValues, Path } from "react-hook-form";
+import { useForm, DefaultValues, Path, PathValue } from "react-hook-form";
 import { ArrowLeft } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/presentation/components/ui/tooltip";
-import { useLogger } from '@/lib/logger';
 
 export interface RelatedService<R extends BaseEntity = BaseEntity> {
   service: BaseService<R>;
@@ -103,6 +102,7 @@ interface GenericFormProps<T extends BaseEntity> {
   onSuccess?: () => void;
   onFieldChange?: (fieldName: keyof T, value: T[keyof T]) => void;
   children?: React.ReactNode;
+  transformValues?: (values: T) => T;
 }
 
 interface ArrayFormContentProps {
@@ -122,7 +122,6 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
   keepOpen,
   onKeepOpenChange,
 }) => {
-  const log = useLogger('ArrayFormContent');
   const [formData, setFormData] = React.useState<Record<string, unknown>>(initialData);
   const [relatedData, setRelatedData] = React.useState<Record<string, BaseEntity[]>>({});
   const [isLoading, setIsLoading] = React.useState(true);
@@ -147,15 +146,11 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
           typeof field.relatedService.service.findAll === 'function'
         );
 
-        log.debug('Fields with service:', { fields: fieldsWithService.map(f => f.name) });
-
         const promises = fieldsWithService.map(async field => {
           try {
             const result = await field.relatedService!.service.findAll();
-            log.debug(`Data loaded for ${field.name}`, { data: result });
             return { field: field.name, data: result };
-          } catch (error) {
-            log.error(`Error loading data for ${field.name}`, { error });
+          } catch {
             toast.error(`Error al cargar datos para ${field.label}`);
             return { field: field.name, data: [] };
           }
@@ -170,17 +165,16 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
           }
         });
 
-        log.debug('Final related data', { data: newRelatedData });
         setRelatedData(newRelatedData);
       } catch (error) {
-        log.error('Error loading related data', { error });
+        console.error('Error loading related data', { error });
       } finally {
         setIsLoading(false);
       }
     };
 
     loadRelatedData();
-  }, [arrayForm.fields, log]);
+  }, [arrayForm.fields]);
 
   // Actualizar el formulario cuando cambian los datos iniciales
   React.useEffect(() => {
@@ -188,7 +182,6 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
   }, [initialData]);
 
   const handleFieldChange = (value: unknown, field: Field<BaseEntity>) => {
-    log.debug(`Field ${field.name} changed`, { value, field });
     setFormData(prev => ({
       ...prev,
       [field.name]: value
@@ -237,7 +230,6 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
         }
 
         if (value === undefined || value === null || label === undefined || label === null) {
-          log.warn(`Invalid item data for field ${field.name}`, { item });
           return;
         }
 
@@ -247,7 +239,6 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
         });
       });
 
-      log.debug(`Options generated for ${field.name}`, { options });
       return options;
     }
 
@@ -269,14 +260,6 @@ const ArrayFormContent: React.FC<ArrayFormContentProps> = ({
         const options = formField.type === 'select' ? getFieldOptions(formField) : [];
         const currentValue = formData[formField.name];
         
-        log.debug(`Rendering field ${formField.name}:`, {
-          type: formField.type,
-          value: currentValue,
-          options,
-          hasRelatedService: !!formField.relatedService,
-          relatedData: formField.relatedService ? relatedData[formField.name] : undefined
-        });
-
         return (
           <div key={formField.name} className="flex-1 min-w-[200px]">
             <Label htmlFor={formField.name} className="sr-only">
@@ -360,8 +343,8 @@ export function GenericForm<T extends BaseEntity>({
   backPath,
   service,
   onSuccess,
+  transformValues,
 }: GenericFormProps<T>) {
-  const log = useLogger('GenericForm');
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [relatedData, setRelatedData] = React.useState<Record<string, T[]>>({});
@@ -371,12 +354,12 @@ export function GenericForm<T extends BaseEntity>({
 
   // Actualizar valores del formulario cuando cambien los initialValues
   React.useEffect(() => {
-    log.debug('Actualizando valores iniciales del formulario', { 
+    console.log('Actualizando valores iniciales del formulario', { 
       hasId: !!initialValues.id,
       fieldsCount: fields.length 
     });
     form.reset(initialValues);
-  }, [form, initialValues, log]);
+  }, [form, initialValues, fields.length]);
 
   React.useEffect(() => {
     const loadRelatedData = async () => {
@@ -394,7 +377,7 @@ export function GenericForm<T extends BaseEntity>({
 
       if (fieldsToLoad.length === 0) return;
 
-      log.info('Cargando datos relacionados', { 
+      console.log('Cargando datos relacionados', { 
         fieldsCount: fieldsToLoad.length,
         fields: fieldsToLoad.map(f => f.name)
       });
@@ -402,14 +385,14 @@ export function GenericForm<T extends BaseEntity>({
       const promises = fieldsToLoad.map(async field => {
         try {
           if (!field.relatedService?.service?.findAll) {
-            log.warn(`Servicio no configurado correctamente para el campo ${field.name}`);
+            console.warn(`Servicio no configurado correctamente para el campo ${field.name}`);
             return { field: field.name, data: [] };
           }
           const result = await field.relatedService.service.findAll();
-          log.debug(`Datos cargados para ${field.name}`, { count: result.length });
+          console.log(`Datos cargados para ${field.name}`, { count: result.length });
           return { field: field.name, data: result };
         } catch (error) {
-          log.error(`Error al cargar datos para ${field.name}`, { error });
+          console.error(`Error al cargar datos para ${field.name}`, { error });
           toast.error(`Error al cargar datos relacionados para ${field.label}`);
           return { field: field.name, data: [] };
         }
@@ -426,11 +409,11 @@ export function GenericForm<T extends BaseEntity>({
     };
 
     loadRelatedData();
-  }, [fields, sections, relatedData, log]);
+  }, [fields, sections, relatedData]);
 
   const handleSubmit = async (data: T) => {
     setIsSubmitting(true);
-    log.info('Iniciando envío del formulario', { 
+    console.log('Iniciando envío del formulario', { 
       hasId: !!initialValues.id,
       fieldsCount: Object.keys(data).length 
     });
@@ -445,37 +428,39 @@ export function GenericForm<T extends BaseEntity>({
           acc[key] = value;
         }
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, string | number | boolean | null | undefined | unknown[]>);
+
+      // Aplicar transformación personalizada si existe
+      const transformedData = transformValues ? transformValues(processedData as unknown as T) : processedData;
 
       // Eliminar campos undefined antes de enviar
       const cleanData = Object.fromEntries(
-        Object.entries(processedData).filter(([, value]) => value !== undefined)
-      ) as T;
+        Object.entries(transformedData).filter(([, value]) => value !== undefined)
+      ) as unknown as T;
 
-      log.debug('Datos procesados para enviar:', { 
+      console.log('Datos procesados para enviar:', { 
         originalData: data,
         processedData: cleanData 
       });
 
       if (initialValues.id) {
-        log.debug('Actualizando registro existente', { 
+        console.log('Actualizando registro existente', { 
           id: initialValues.id,
           data: cleanData
         });
         await service.update(initialValues.id, cleanData);
-        log.info('Registro actualizado exitosamente', { id: initialValues.id });
+        console.log('Registro actualizado exitosamente', { id: initialValues.id });
         toast.success('Registro actualizado exitosamente');
       } else {
-        log.debug('Creando nuevo registro', { data: cleanData });
+        console.log('Creando nuevo registro', { data: cleanData });
         await service.create(cleanData as Omit<T, 'id' | 'nro' | 'createdAt' | 'updatedAt'>);
-        log.info('Registro creado exitosamente');
+        console.log('Registro creado exitosamente');
         toast.success('Registro creado exitosamente');
       }
       onSuccess?.();
       navigate(backPath);
     } catch (error: unknown) {
-      log.error('Error al guardar el registro', { error });
-      console.error('Error al guardar el registro:', error);
+      console.error('Error al guardar el registro', { error });
       const errorMessage = error instanceof Error ? error.message : 'Error al guardar el registro';
       toast.error(errorMessage);
     } finally {
@@ -515,7 +500,6 @@ export function GenericForm<T extends BaseEntity>({
         }
 
         if (value === undefined || value === null || label === undefined || label === null) {
-          log.warn(`Invalid item data for field ${field.name}`, { item });
           return;
         }
 
@@ -525,7 +509,6 @@ export function GenericForm<T extends BaseEntity>({
         });
       });
 
-      log.debug(`Options generated for ${field.name}`, { options });
       return options;
     }
 
@@ -537,7 +520,7 @@ export function GenericForm<T extends BaseEntity>({
       return Boolean(value);
     }
     if (field.type === 'array') {
-      return Array.isArray(value) ? value : [];
+      return Array.isArray(value) ? value as Record<string, unknown>[] : [];
     }
     if (value === null || value === undefined) {
       return '';
@@ -557,14 +540,14 @@ export function GenericForm<T extends BaseEntity>({
         control={form.control}
         name={field.name as Path<T>}
         render={({ field: formField }) => {
-          log.debug(`Renderizando campo ${field.name}`, {
+          console.log(`Renderizando campo ${field.name}`, {
             type: field.type,
             hasOnChange: !!field.onChange,
             currentValue: formField.value
           });
 
           const handleChange = (value: unknown) => {
-            log.debug(`Cambio en campo ${field.name}`, {
+            console.log(`Cambio en campo ${field.name}`, {
               oldValue: formField.value,
               newValue: value,
               hasOnChange: !!field.onChange
@@ -575,11 +558,11 @@ export function GenericForm<T extends BaseEntity>({
 
             // Si hay un onChange personalizado, lo ejecutamos después
             if (field.onChange) {
-              const result = field.onChange(value, form.getValues());
+              const result = field.onChange(value, form.getValues() as Record<string, unknown>);
               if (result) {
                 // Actualizamos solo los campos específicos que devuelve el onChange
                 Object.entries(result).forEach(([key, val]) => {
-                  form.setValue(key as Path<T>, val as T[Path<T>], {
+                  form.setValue(key as Path<T>, val as unknown as PathValue<T, Path<T>>, {
                     shouldDirty: true,
                     shouldTouch: true,
                     shouldValidate: true
@@ -626,7 +609,7 @@ export function GenericForm<T extends BaseEntity>({
                 ) : field.type === "array" ? (
                   <ArrayField
                     config={field.arrayConfig!}
-                    value={getFieldValue(field, formField.value) as unknown[]}
+                    value={(getFieldValue(field, formField.value) as unknown[]) as Record<string, unknown>[]}
                     onChange={handleChange}
                     FormContent={ArrayFormContent}
                   />

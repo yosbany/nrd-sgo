@@ -33,3 +33,27 @@ export const OrderStatusColor: Record<OrderStatus, string> = {
   [OrderStatus.COMPLETADA]: 'success',
   [OrderStatus.CANCELADA]: 'destructive'
 } as const; 
+
+
+export const getStatusOptions = () => [
+  { 
+    value: OrderStatus.PENDIENTE, 
+    label: OrderStatus.PENDIENTE, 
+    color: 'warning' as const 
+  },
+  { 
+    value: OrderStatus.ENVIADA, 
+    label: OrderStatus.ENVIADA, 
+    color: 'info' as const 
+  },
+  { 
+    value: OrderStatus.COMPLETADA, 
+    label: OrderStatus.COMPLETADA, 
+    color: 'success' as const 
+  },
+  { 
+    value: OrderStatus.CANCELADA, 
+    label: OrderStatus.CANCELADA, 
+    color: 'danger' as const 
+  }
+];

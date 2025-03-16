@@ -1,7 +1,8 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
-import { ProductionOrder } from '../../../domain/models/production-order.model';
+import { ArrayTable } from '../../components/common/ArrayTable';
+import { ProductionOrder, RecipeItems } from '../../../domain/models/production-order.model';
 import { ProductionOrderServiceImpl } from '../../../domain/services/production-order.service.impl';
 import { WorkerServiceImpl } from '@/domain/services/worker.service.impl';
 import { RecipeServiceImpl } from '@/domain/services/recipe.service.impl';
@@ -23,12 +24,16 @@ export function ProductionOrderDetails() {
       ]);
 
       const workersMap = workersData.reduce((acc, worker) => {
-        acc[worker.id] = worker.name;
+        if (worker.id && worker.name) {
+          acc[worker.id] = worker.name;
+        }
         return acc;
       }, {} as Record<string, string>);
 
       const recipesMap = recipesData.reduce((acc, recipe) => {
-        acc[recipe.id] = recipe.name;
+        if (recipe.id && recipe.name) {
+          acc[recipe.id] = recipe.name;
+        }
         return acc;
       }, {} as Record<string, string>);
 
@@ -38,35 +43,23 @@ export function ProductionOrderDetails() {
     loadData();
   }, []);
 
-  
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('es-CL', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   const renderRecipes = (orderRecipes: ProductionOrder['recipes']) => {
-    if (!orderRecipes?.length) return 'No hay recetas';
-    return (
-      <table className="w-full">
-        <tbody>
-          {orderRecipes.map((recipe, index) => (
-            <tr key={index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-              <td className="p-4 align-middle">
-                <div className="font-medium">
-                  {recipes[recipe.recipeId] || 'Receta no encontrada'}
-                </div>
-              </td>
-              <td className="p-4 align-middle text-muted-foreground">
-                Cantidad: {recipe.quantity}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
+    const columns = [
+      {
+        header: 'Receta',
+        accessor: (recipe: RecipeItems) => {
+          return <div className="font-medium">{recipes[recipe.recipeId] || 'Receta no encontrada'}</div>;
+        }
+      },
+      {
+        header: 'Cantidad',
+        accessor: (recipe: RecipeItems) => {
+          return `${recipe.quantity}`;
+        }
+      }
+    ];
+
+    return <ArrayTable data={orderRecipes} columns={columns} emptyMessage="No hay recetas" />;
   };
 
   const renderRatios = (ratios: ProductionOrder['ratios']) => {
@@ -93,10 +86,12 @@ export function ProductionOrderDetails() {
 
   const getFields = (order: ProductionOrder) => [
     { label: 'Trabajador Responsable', value: workers[order.responsibleWorkerId] || 'Trabajador no encontrado' },
-    { label: 'Fecha de Producción', value: formatDate(order.orderDate) },
     { label: 'Estado', value: OrderStatusLabel[order.status] },
-    { label: 'Recetas', value: order.recipes?.length ? renderRecipes(order.recipes) : 'No hay recetas' },
-    { label: 'Ratios de Producción', value: order.ratios?.length ? renderRatios(order.ratios) : 'No hay ratios definidos' },
+    { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
+    { label: 'Total de Recetas', value: order.totalProducts },
+    { label: 'Total de Items', value: order.totalItems },
+    { label: 'Recetas', value: renderRecipes(order.recipes) },
+    { label: 'Ratios de Producción', value: renderRatios(order.ratios) }
   ];
 
   if (!id) return null;

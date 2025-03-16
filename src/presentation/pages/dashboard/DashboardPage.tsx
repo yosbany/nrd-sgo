@@ -1,7 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import {
-  ShoppingCart, Package, DollarSign, Factory,
-  Clock, Calculator, Apple, RefreshCcw,
+  ShoppingCart, Package, Factory, Calculator, Apple, RefreshCcw,
   ShoppingBag, Truck, Users, HardHat
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/presentation/components/ui/card';
@@ -9,6 +8,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { DashboardServiceImpl, DashboardData } from '@/domain/services/dashboard.service.impl';
 import { PriceCalculator } from '@/presentation/components/ui/price-calculator';
 import { ProduceCalculator } from '@/presentation/components/ui/produce-calculator';
+import { DataImportExport } from '@/presentation/components/ui/data-import-export';
 import { OrderStatus } from '@/domain/enums/order-status.enum';
 
 const DashboardPage: FC = () => {
@@ -17,6 +17,7 @@ const DashboardPage: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [isProduceCalculatorOpen, setIsProduceCalculatorOpen] = useState(false);
+  const [isDataImportExportOpen, setIsDataImportExportOpen] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -52,9 +53,10 @@ const DashboardPage: FC = () => {
       onClick: () => setIsProduceCalculatorOpen(true)
     },
     { 
-      name: 'Actualización de Precios', 
+      name: 'Actualización de Datos', 
       icon: RefreshCcw, 
-      color: 'bg-purple-500/10 text-purple-500' 
+      color: 'bg-purple-500/10 text-purple-500',
+      onClick: () => setIsDataImportExportOpen(true)
     },
   ];
 
@@ -216,11 +218,11 @@ const DashboardPage: FC = () => {
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Más Comprados</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-1">
             {dashboardData?.topPurchased.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-lg ${
+              <div key={index} className="flex items-center justify-between py-1 px-2 rounded-lg bg-background/50">
+                <div className="flex items-center space-x-2">
+                  <div className={`p-1.5 rounded-lg ${
                     product.status === OrderStatus.PENDIENTE ? 'bg-yellow-500/10' :
                     product.status === OrderStatus.ENVIADA ? 'bg-blue-500/10' :
                     product.status === OrderStatus.COMPLETADA ? 'bg-green-500/10' :
@@ -235,14 +237,6 @@ const DashboardPage: FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Estado: {
-                        product.status === OrderStatus.PENDIENTE ? 'Pendiente' :
-                        product.status === OrderStatus.ENVIADA ? 'Enviada' :
-                        product.status === OrderStatus.COMPLETADA ? 'Completada' :
-                        'Cancelada'
-                      }
-                    </p>
                     <p className="text-xs text-muted-foreground">Cantidad: {product.quantity}</p>
                   </div>
                 </div>
@@ -259,12 +253,12 @@ const DashboardPage: FC = () => {
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Más Producidos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-1">
             {dashboardData?.topProduced && dashboardData.topProduced.length > 0 ? (
               dashboardData.topProduced.map((recipe, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-green-500/10 rounded-lg">
+                <div key={index} className="flex items-center justify-between py-1 px-2 rounded-lg bg-background/50">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-green-500/10 rounded-lg">
                       <Factory className="h-5 w-5 text-green-500" />
                     </div>
                     <div>
@@ -291,11 +285,11 @@ const DashboardPage: FC = () => {
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Más Pedidos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-1">
             {dashboardData?.topOrdered.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-lg ${
+              <div key={index} className="flex items-center justify-between py-1 px-2 rounded-lg bg-background/50">
+                <div className="flex items-center space-x-2">
+                  <div className={`p-1.5 rounded-lg ${
                     product.status === OrderStatus.PENDIENTE ? 'bg-yellow-500/10' :
                     product.status === OrderStatus.ENVIADA ? 'bg-blue-500/10' :
                     product.status === OrderStatus.COMPLETADA ? 'bg-green-500/10' :
@@ -310,14 +304,6 @@ const DashboardPage: FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Estado: {
-                        product.status === OrderStatus.PENDIENTE ? 'Pendiente' :
-                        product.status === OrderStatus.ENVIADA ? 'Enviada' :
-                        product.status === OrderStatus.COMPLETADA ? 'Completada' :
-                        'Cancelada'
-                      }
-                    </p>
                     <p className="text-xs text-muted-foreground">Cantidad: {product.quantity}</p>
                   </div>
                 </div>
@@ -341,6 +327,12 @@ const DashboardPage: FC = () => {
       <ProduceCalculator 
         isOpen={isProduceCalculatorOpen} 
         onClose={() => setIsProduceCalculatorOpen(false)} 
+      />
+
+      {/* Data Import/Export Modal */}
+      <DataImportExport
+        isOpen={isDataImportExportOpen}
+        onClose={() => setIsDataImportExportOpen(false)}
       />
     </div>
   );

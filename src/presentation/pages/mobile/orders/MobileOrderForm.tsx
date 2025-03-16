@@ -9,7 +9,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/presentation/components/ui/collapsible";
-import { CustomerOrder } from '@/domain/models/customer-order.model';
+import { CustomerOrder, ItemOrder } from '@/domain/models/customer-order.model';
 import { CustomerOrderServiceImpl } from '@/domain/services/customer-order.service.impl';
 import { CustomerServiceImpl } from '@/domain/services/customer.service.impl';
 import { ProductServiceImpl } from '@/domain/services/product.service.impl';
@@ -21,8 +21,11 @@ import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { UnitServiceImpl } from '@/domain/services/unit.service.impl';
 import { DatePicker } from '@/presentation/components/ui/date-picker';
-import { OrderStatus, OrderStatusLabel } from '@/domain/enums/order-status.enum';
+import { OrderStatus } from '@/domain/enums/order-status.enum';
 import { SupplierServiceImpl } from '@/domain/services/supplier.service.impl';
+import { TypeInventory } from '@/domain/enums/type-inventory.enum';
+import { Customer } from '@/domain/models/customer.model';
+import { Unit } from '@/domain/models/unit.model';
 
 interface QuantityInputProps {
   value: number;
@@ -99,20 +102,21 @@ export const MobileOrderForm: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isGeneralOpen, setIsGeneralOpen] = React.useState(!id);
-  const [customers, setCustomers] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
-  const [units, setUnits] = React.useState<Array<{ id: string; symbol: string; name: string }>>([]);
+  const [units, setUnits] = React.useState<Unit[]>([]);
   const [selectedProduct, setSelectedProduct] = React.useState<string>('');
   const [selectedRecipe, setSelectedRecipe] = React.useState<string>('');
   const [productQuantity, setProductQuantity] = React.useState<number>(1);
   const [recipeQuantity, setRecipeQuantity] = React.useState<number>(1);
   const [formData, setFormData] = React.useState<Partial<CustomerOrder>>({
     orderDate: new Date(),
-    status: OrderStatus.PENDIENTE,
     customerId: '',
-    products: [],
-    recipes: []
+    items: [],
+    totalItems: 0,
+    totalProducts: 0,
+    status: OrderStatus.PENDIENTE
   });
   const [filteredItems, setFilteredItems] = React.useState<Array<(Product | Recipe) & { type: 'product' | 'recipe' }>>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -144,11 +148,7 @@ export const MobileOrderForm: React.FC = () => {
     filterAndSortItems(searchTerm);
   }, [filterAndSortItems, searchTerm, formData.customerId]);
 
-  React.useEffect(() => {
-    loadInitialData();
-  }, [id, copyFromId, calculateFromSupplierId]);
-
-  const loadInitialData = async () => {
+  const loadInitialData = React.useCallback(async () => {
     try {
       const [customersData, productsData, recipesData, unitsData] = await Promise.all([
         new CustomerServiceImpl().findAll(),
@@ -188,7 +188,10 @@ export const MobileOrderForm: React.FC = () => {
             ...orderData,
             id: undefined, // Eliminar el ID para que se cree una nueva orden
             orderDate: new Date(), // Actualizar la fecha
-            status: OrderStatus.PENDIENTE // Restablecer el estado
+            status: OrderStatus.PENDIENTE, // Restablecer el estado
+            items: [],
+            totalItems: 0,
+            totalProducts: 0
           });
         }
       } else if (calculateFromSupplierId) {
@@ -205,12 +208,15 @@ export const MobileOrderForm: React.FC = () => {
           setFormData({
             orderDate: new Date(),
             status: OrderStatus.PENDIENTE,
-            products: supplierProducts.map(product => ({
-              productId: product.id,
-              quantity: 0, // La cantidad se calculará después
-              // Otros campos necesarios...
-            })),
-            recipes: []
+            items: supplierProducts
+              .filter(product => product.id)
+              .map(product => ({
+                itemId: product.id!,
+                quantity: 0,
+                typeItem: TypeInventory.PRODUCTO
+              })),
+            totalItems: 0,
+            totalProducts: supplierProducts.length
           });
         }
       }
@@ -220,7 +226,11 @@ export const MobileOrderForm: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id, copyFromId, calculateFromSupplierId]);
+
+  React.useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   const handleAddProduct = () => {
     if (!selectedProduct) {
@@ -232,24 +242,30 @@ export const MobileOrderForm: React.FC = () => {
       return;
     }
 
-    const existingProductIndex = formData.products?.findIndex(
-      p => p.productId === selectedProduct
-    );
+    const newItem: ItemOrder = {
+      itemId: selectedProduct,
+      quantity: productQuantity,
+      typeItem: TypeInventory.PRODUCTO
+    };
 
-    if (existingProductIndex !== undefined && existingProductIndex >= 0) {
-      const updatedProducts = [...(formData.products || [])];
-      updatedProducts[existingProductIndex].quantity += productQuantity;
+    const existingItemIndex = formData.items?.findIndex(
+      i => i.itemId === selectedProduct && i.typeItem === TypeInventory.PRODUCTO
+    ) ?? -1;
+
+    if (existingItemIndex >= 0) {
+      const updatedItems = [...(formData.items || [])];
+      updatedItems[existingItemIndex].quantity += productQuantity;
       
       setFormData(prev => ({
         ...prev,
-        products: updatedProducts
+        items: updatedItems
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        products: [
-          ...(prev.products || []),
-          { productId: selectedProduct, quantity: productQuantity }
+        items: [
+          ...(prev.items || []),
+          newItem
         ]
       }));
     }
@@ -268,24 +284,30 @@ export const MobileOrderForm: React.FC = () => {
       return;
     }
 
-    const existingRecipeIndex = formData.recipes?.findIndex(
-      r => r.recipeId === selectedRecipe
-    );
+    const newItem: ItemOrder = {
+      itemId: selectedRecipe,
+      quantity: recipeQuantity,
+      typeItem: TypeInventory.RECETA
+    };
 
-    if (existingRecipeIndex !== undefined && existingRecipeIndex >= 0) {
-      const updatedRecipes = [...(formData.recipes || [])];
-      updatedRecipes[existingRecipeIndex].quantity += recipeQuantity;
+    const existingItemIndex = formData.items?.findIndex(
+      i => i.itemId === selectedRecipe && i.typeItem === TypeInventory.RECETA
+    ) ?? -1;
+
+    if (existingItemIndex >= 0) {
+      const updatedItems = [...(formData.items || [])];
+      updatedItems[existingItemIndex].quantity += recipeQuantity;
       
       setFormData(prev => ({
         ...prev,
-        recipes: updatedRecipes
+        items: updatedItems
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        recipes: [
-          ...(prev.recipes || []),
-          { recipeId: selectedRecipe, quantity: recipeQuantity }
+        items: [
+          ...(prev.items || []),
+          newItem
         ]
       }));
     }
@@ -297,14 +319,14 @@ export const MobileOrderForm: React.FC = () => {
   const handleRemoveProduct = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      products: prev.products?.filter((_, i) => i !== index)
+      items: prev.items?.filter((_, i) => i !== index)
     }));
   };
 
   const handleRemoveRecipe = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      recipes: prev.recipes?.filter((_, i) => i !== index)
+      items: prev.items?.filter((_, i) => i !== index)
     }));
   };
 
@@ -316,7 +338,7 @@ export const MobileOrderForm: React.FC = () => {
       return;
     }
 
-    if (!formData.products?.length && !formData.recipes?.length) {
+    if (!formData.items?.length) {
       toast.error('Debe agregar al menos un producto o receta');
       return;
     }
@@ -325,13 +347,10 @@ export const MobileOrderForm: React.FC = () => {
 
     try {
       const orderService = new CustomerOrderServiceImpl();
-      const products = formData.products || [];
-      const recipes = formData.recipes || [];
+      const items = formData.items || [];
       
-      const totalItems = products.reduce((sum, p) => sum + p.quantity, 0) +
-        recipes.reduce((sum, r) => sum + r.quantity, 0);
-      
-      const totalProducts = products.length + recipes.length;
+      const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+      const totalProducts = items.length;
 
       const orderToSave = {
         customerId: formData.customerId,
@@ -339,8 +358,7 @@ export const MobileOrderForm: React.FC = () => {
           ? formData.orderDate 
           : new Date(formData.orderDate || new Date()),
         status: formData.status,
-        products: products,
-        recipes: recipes,
+        items: items,
         totalItems,
         totalProducts
       };
@@ -363,7 +381,15 @@ export const MobileOrderForm: React.FC = () => {
 
   const getDateValue = () => {
     try {
-      return formData.orderDate ? format(formData.orderDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+      if (!formData.orderDate) return format(new Date(), 'yyyy-MM-dd');
+      
+      const date = formData.orderDate instanceof Date 
+        ? formData.orderDate 
+        : new Date(formData.orderDate);
+      
+      return isNaN(date.getTime()) 
+        ? format(new Date(), 'yyyy-MM-dd')
+        : format(date, 'yyyy-MM-dd');
     } catch (error) {
       console.error('Error formatting date:', error);
       return format(new Date(), 'yyyy-MM-dd');
@@ -388,10 +414,18 @@ export const MobileOrderForm: React.FC = () => {
               onClick={() => setIsGeneralOpen(!isGeneralOpen)}
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">INFORMACIÓN GENERAL</span>
+                <span className="text-sm font-bold uppercase">INFORMACIÓN GENERAL</span>
                 {!isGeneralOpen && (
                   <span className="text-xs text-gray-500">
-                    {formData.customerId ? customers.find(c => c.id === formData.customerId)?.name : 'Sin asignar'} • {formData.orderDate ? format(new Date(formData.orderDate), 'dd/MM/yyyy') : ''}
+                    {formData.customerId ? customers.find(c => c.id === formData.customerId)?.name : 'Sin asignar'} • {formData.orderDate ? (() => {
+                      try {
+                        const date = formData.orderDate instanceof Date ? formData.orderDate : new Date(formData.orderDate);
+                        return isNaN(date.getTime()) ? '' : format(date, 'dd/MM/yyyy');
+                      } catch (error) {
+                        console.error('Error formatting date:', error);
+                        return '';
+                      }
+                    })() : ''}
                   </span>
                 )}
               </div>
@@ -447,17 +481,11 @@ export const MobileOrderForm: React.FC = () => {
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as OrderStatus }))}
-                    disabled={!id}
                   >
-                    {id ? (
-                      Object.values(OrderStatus).map((status) => (
-                        <option key={status} value={status}>
-                          {OrderStatusLabel[status]}
-                        </option>
-                      ))
-                    ) : (
-                      <option value={OrderStatus.PENDIENTE}>{OrderStatusLabel[OrderStatus.PENDIENTE]}</option>
-                    )}
+                    <option value={OrderStatus.PENDIENTE}>Pendiente</option>
+                    <option value={OrderStatus.ENVIADA}>Enviada</option>
+                    <option value={OrderStatus.COMPLETADA}>Completada</option>
+                    <option value={OrderStatus.CANCELADA}>Cancelada</option>
                   </select>
                 </div>
               </div>
@@ -469,23 +497,19 @@ export const MobileOrderForm: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-500">
-                {formData.products?.length || 0} productos • {formData.recipes?.length || 0} recetas • {[
-                  ...(formData.products || []).map(p => p.quantity),
-                  ...(formData.recipes || []).map(r => r.quantity)
-                ].reduce((sum, current) => sum + current, 0)} items
+                {formData.items?.length || 0} productos • {formData.items?.filter(i => i.typeItem === TypeInventory.RECETA).length || 0} recetas • {formData.totalItems} items
               </span>
             </div>
             <span className="font-semibold text-blue-600">
-              ${[
-                ...(formData.products || []).map(p => {
-                  const product = products.find(prod => prod.id === p.productId);
-                  return ((product?.purchasePrice || 0) * p.quantity);
-                }),
-                ...(formData.recipes || []).map(r => {
-                  const recipe = recipes.find(rec => rec.id === r.recipeId);
-                  return ((recipe?.cost || 0) * r.quantity);
-                })
-              ].reduce((sum, current) => sum + current, 0).toFixed(2)}
+              ${formData.items?.reduce((sum, item) => {
+                if (item.typeItem === TypeInventory.RECETA) {
+                  const recipe = recipes.find(r => r.id === item.itemId);
+                  return sum + (item.quantity * (recipe?.unitCost ?? 0));
+                } else {
+                  const product = products.find(p => p.id === item.itemId);
+                  return sum + (item.quantity * (product?.purchasePrice ?? 0));
+                }
+              }, 0).toFixed(2)}
             </span>
           </div>
         </div>
@@ -525,9 +549,9 @@ export const MobileOrderForm: React.FC = () => {
               <div className="grid grid-cols-1 gap-2">
                 {filteredItems.map(item => {
                   const isRecipe = item.type === 'recipe';
-                  const existingItem = isRecipe 
-                    ? formData.recipes?.find(r => r.recipeId === item.id)
-                    : formData.products?.find(p => p.productId === item.id);
+                  const existingItem = item.type === 'recipe'
+                    ? formData.items?.find(i => i.itemId === item.id && i.typeItem === TypeInventory.RECETA)
+                    : formData.items?.find(i => i.itemId === item.id && i.typeItem === TypeInventory.PRODUCTO);
 
                   return (
                     <div
@@ -544,22 +568,26 @@ export const MobileOrderForm: React.FC = () => {
                         if (existingItem) {
                           if (isRecipe) {
                             handleRemoveRecipe(
-                              formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                              formData.items?.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.RECETA) || 0
                             );
                           } else {
                             handleRemoveProduct(
-                              formData.products?.findIndex(p => p.productId === item.id) || 0
+                              formData.items?.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.PRODUCTO) || 0
                             );
                           }
                         } else {
                           if (isRecipe) {
-                            setSelectedRecipe(item.id);
-                            setRecipeQuantity(1);
-                            handleAddRecipe();
+                            if (item.id) {
+                              setSelectedRecipe(item.id);
+                              setRecipeQuantity(1);
+                              handleAddRecipe();
+                            }
                           } else {
-                            setSelectedProduct(item.id);
-                            setProductQuantity(1);
-                            handleAddProduct();
+                            if (item.id) {
+                              setSelectedProduct(item.id);
+                              setProductQuantity(1);
+                              handleAddProduct();
+                            }
                           }
                         }
                       }}
@@ -576,22 +604,26 @@ export const MobileOrderForm: React.FC = () => {
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 if (isRecipe) {
-                                  setSelectedRecipe(item.id);
-                                  setRecipeQuantity(1);
-                                  handleAddRecipe();
+                                  if (item.id) {
+                                    setSelectedRecipe(item.id);
+                                    setRecipeQuantity(1);
+                                    handleAddRecipe();
+                                  }
                                 } else {
-                                  setSelectedProduct(item.id);
-                                  setProductQuantity(1);
-                                  handleAddProduct();
+                                  if (item.id) {
+                                    setSelectedProduct(item.id);
+                                    setProductQuantity(1);
+                                    handleAddProduct();
+                                  }
                                 }
                               } else {
                                 if (isRecipe) {
                                   handleRemoveRecipe(
-                                    formData.recipes?.findIndex(r => r.recipeId === item.id) || 0
+                                    formData.items?.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.RECETA) || 0
                                   );
                                 } else {
                                   handleRemoveProduct(
-                                    formData.products?.findIndex(p => p.productId === item.id) || 0
+                                    formData.items?.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.PRODUCTO) || 0
                                   );
                                 }
                               }
@@ -609,28 +641,35 @@ export const MobileOrderForm: React.FC = () => {
                             <div className="ml-8 space-y-2">
                               <QuantityInput
                                 value={existingItem.quantity}
-                                unit={isRecipe 
-                                  ? units.find(u => u.id === (item as Recipe).yieldUnitId)
-                                  : units.find(u => u.id === (item as Product).salesUnitId)}
+                                unit={(() => {
+                                  const unit = isRecipe 
+                                    ? units.find(u => u.id === (item as Recipe).yieldUnitId)
+                                    : units.find(u => u.id === (item as Product).salesUnitId);
+                                  return unit && {
+                                    id: String(unit.id),
+                                    symbol: String(unit.symbol),
+                                    name: String(unit.name)
+                                  };
+                                })()}
                                 onQuantityChange={(value) => {
                                   if (isRecipe) {
-                                    const updatedRecipes = [...(formData.recipes || [])];
-                                    const index = updatedRecipes.findIndex(r => r.recipeId === item.id);
+                                    const updatedItems = [...(formData.items || [])];
+                                    const index = updatedItems.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.RECETA);
                                     if (index >= 0) {
-                                      updatedRecipes[index].quantity = value;
+                                      updatedItems[index].quantity = value;
                                       setFormData(prev => ({
                                         ...prev,
-                                        recipes: updatedRecipes
+                                        items: updatedItems
                                       }));
                                     }
                                   } else {
-                                    const updatedProducts = [...(formData.products || [])];
-                                    const index = updatedProducts.findIndex(p => p.productId === item.id);
+                                    const updatedItems = [...(formData.items || [])];
+                                    const index = updatedItems.findIndex(i => i.itemId === item.id && i.typeItem === TypeInventory.PRODUCTO);
                                     if (index >= 0) {
-                                      updatedProducts[index].quantity = value;
+                                      updatedItems[index].quantity = value;
                                       setFormData(prev => ({
                                         ...prev,
-                                        products: updatedProducts
+                                        items: updatedItems
                                       }));
                                     }
                                   }
@@ -640,16 +679,16 @@ export const MobileOrderForm: React.FC = () => {
                                 <span className="text-gray-600">Costo unitario:</span>
                                 <span className="font-medium">
                                   ${isRecipe 
-                                    ? (item as Recipe).cost.toFixed(2)
-                                    : ((item as Product).purchasePrice || 0).toFixed(2)}
+                                    ? Number((item as Recipe).unitCost || 0).toFixed(2)
+                                    : Number((item as Product).purchasePrice || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Total:</span>
                                 <span className="font-semibold text-blue-600">
                                   ${isRecipe 
-                                    ? ((item as Recipe).cost * existingItem.quantity).toFixed(2)
-                                    : (((item as Product).purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                                    ? Number(((item as Recipe).unitCost || 0) * existingItem.quantity).toFixed(2)
+                                    : Number(((item as Product).purchasePrice || 0) * existingItem.quantity).toFixed(2)}
                                 </span>
                               </div>
                             </div>

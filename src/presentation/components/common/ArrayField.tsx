@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { BaseEntity } from '@/domain/models/base.entity';
 import {
   Button,
 } from '@/presentation/components/ui/button';
@@ -23,9 +24,9 @@ import { ConfirmDialog } from './ConfirmDialog';
 interface Column {
   header: string;
   accessor: string;
-  render?: (value: any, item: any) => React.ReactNode;
+  render?: (value: unknown, item: Record<string, unknown>) => React.ReactNode;
   reference?: {
-    field: Field;
+    field: Field<BaseEntity>;
     displayField: string;
   };
 }
@@ -33,7 +34,7 @@ interface Column {
 interface ArrayConfig {
   columns: Column[];
   form: {
-    fields: Field[];
+    fields: Field<BaseEntity>[];
     emptyState?: {
       title: string;
       description: string;
@@ -45,19 +46,19 @@ interface ArrayConfig {
     addButtonText?: string;
     editButtonTooltip?: string;
     deleteButtonTooltip?: string;
-    disableEditIf?: (item: Record<string, any>) => boolean;
-    disableDeleteIf?: (item: Record<string, any>) => boolean;
+    disableEditIf?: (item: Record<string, unknown>) => boolean;
+    disableDeleteIf?: (item: Record<string, unknown>) => boolean;
   };
 }
 
 interface ArrayFieldProps {
-  value: any[];
-  onChange: (newValue: any[]) => void;
+  value: Record<string, unknown>[];
+  onChange: (newValue: Record<string, unknown>[]) => void;
   config: ArrayConfig;
   FormContent: React.ComponentType<{
     arrayForm: ArrayConfig['form'];
-    initialData: Record<string, any>;
-    onSubmit: (values: any) => void;
+    initialData: Record<string, unknown>;
+    onSubmit: (values: Record<string, unknown>) => void;
     onCancel: () => void;
     keepOpen?: boolean;
     onKeepOpenChange?: (checked: boolean) => void;
@@ -84,14 +85,9 @@ export function ArrayField({
         title: 'No hay elementos',
         description: 'Haga clic en el botón "Agregar" para comenzar.',
       },
-      modalTitles = {
-        add: 'Agregar elemento',
-        edit: 'Editar elemento',
-      },
       addButtonText = 'Agregar',
       editButtonTooltip = 'Editar',
       deleteButtonTooltip = 'Eliminar',
-      disableEditIf,
     },
   } = config;
 
@@ -115,8 +111,10 @@ export function ArrayField({
 
       results.forEach(({ field, data }) => {
         const dataMap: Record<string, unknown> = {};
-        data.forEach(item => {
-          dataMap[item.id] = item;
+        data.forEach((item: BaseEntity) => {
+          if (item.id) {
+            dataMap[item.id] = item;
+          }
         });
         newReferencedData[field.replace('Id', '')] = dataMap;
       });
@@ -127,36 +125,21 @@ export function ArrayField({
     loadReferencedData();
   }, [columns]);
 
-  // Actualizar el formulario cuando cambian los datos referenciados
-  useEffect(() => {
-    if (isAdding) {
-      // Forzar una actualización del formulario
-      setIsAdding(false);
-      setTimeout(() => setIsAdding(true), 0);
-    }
-  }, [referencedData]);
-
-  // Actualizar el formulario cuando cambian los datos referenciados
-  useEffect(() => {
-    if (editingIndex !== null) {
-      // Forzar una actualización del formulario
-      const currentIndex = editingIndex;
-      setEditingIndex(null);
-      setTimeout(() => setEditingIndex(currentIndex), 0);
-    }
-  }, [referencedData]);
-
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsAdding(true);
+    setEditingIndex(null);
   };
 
-  const handleEdit = (item: Record<string, unknown>, index: number) => {
+  const handleEdit = (index: number) => {
+    setIsAdding(false);
     setEditingIndex(index);
   };
 
   const handleDelete = (index: number) => {
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
     const newValue = [...value];
     newValue.splice(index, 1);
     onChange(newValue);
@@ -186,7 +169,7 @@ export function ArrayField({
     setEditingIndex(null);
   };
 
-  const renderCellValue = (item: Record<string, unknown>, column: Column) => {
+  const renderCellValue = (item: Record<string, unknown>, column: Column): React.ReactNode => {
     if (column.render) {
       return column.render(item[column.accessor], item);
     }
@@ -195,10 +178,10 @@ export function ArrayField({
       const referenceId = item[column.accessor];
       const referenceName = column.accessor.replace('Id', '');
       const referencedItem = referencedData[referenceName]?.[referenceId as string];
-      return referencedItem ? (referencedItem as Record<string, unknown>)[column.reference.displayField] : 'N/A';
+      return referencedItem ? String((referencedItem as Record<string, unknown>)[column.reference.displayField]) : 'N/A';
     }
 
-    return item[column.accessor];
+    return String(item[column.accessor] ?? '');
   };
 
   return (
@@ -215,7 +198,7 @@ export function ArrayField({
         />
 
         <div className="flex items-center justify-between">
-          {!isAdding && (
+          {!isAdding && !editingIndex && (
             <Button 
               onClick={handleAdd} 
               size="sm" 
@@ -229,20 +212,16 @@ export function ArrayField({
           )}
         </div>
 
-        {isAdding && (
+        {(isAdding || editingIndex !== null) && (
           <div className="rounded-lg border border-border/50 p-4">
-            <div className="flex flex-col gap-4">
-              <div className="flex-1">
-                <FormContent
-                  arrayForm={config.form}
-                  initialData={{}}
-                  onSubmit={handleSubmit}
-                  onCancel={handleCancel}
-                  keepOpen={keepOpen}
-                  onKeepOpenChange={(checked) => setKeepOpen(checked)}
-                />
-              </div>
-            </div>
+            <FormContent
+              arrayForm={config.form}
+              initialData={editingIndex !== null ? value[editingIndex] : {}}
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              keepOpen={keepOpen}
+              onKeepOpenChange={setKeepOpen}
+            />
           </div>
         )}
 
@@ -271,72 +250,55 @@ export function ArrayField({
               <TableBody>
                 {value.map((item, index) => (
                   <TableRow key={index} className="hover:bg-muted/5">
-                    {editingIndex === index ? (
-                      <TableCell colSpan={columns.length + 1} className="p-0">
-                        <div className="p-4">
-                          <FormContent
-                            arrayForm={config.form}
-                            initialData={item}
-                            onSubmit={handleSubmit}
-                            onCancel={handleCancel}
-                          />
-                        </div>
+                    {columns.map((column, colIndex) => (
+                      <TableCell key={colIndex} className="py-2 text-sm">
+                        {renderCellValue(item, column)}
                       </TableCell>
-                    ) : (
-                      <>
-                        {columns.map((column, colIndex) => (
-                          <TableCell key={colIndex} className="py-2 text-sm">
-                            {renderCellValue(item, column)}
-                          </TableCell>
-                        ))}
-                        <TableCell className="py-2">
-                          <div className="flex items-center gap-0.5">
-                            {(disableEditIf ? !disableEditIf(item) : true) && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleEdit(item, index);
-                                    }}
-                                  >
-                                    <Pencil className="h-5 w-5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{editButtonTooltip}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-transparent"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDeleteClick(index);
-                                  }}
-                                >
-                                  <Trash2 className="h-5 w-5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{deleteButtonTooltip}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </TableCell>
-                      </>
-                    )}
+                    ))}
+                    <TableCell className="py-2">
+                      <div className="flex items-center gap-0.5">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEdit(index);
+                              }}
+                            >
+                              <Pencil className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{editButtonTooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-transparent"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteClick(index);
+                              }}
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{deleteButtonTooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -1,22 +1,25 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
-import { Incident, IncidentStatus, IncidentType } from '../../../domain/models/incident.model';
+import { Incident } from '../../../domain/models/incident.model';
 import { IncidentServiceImpl } from '../../../domain/services/incident.service.impl';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RoleServiceImpl } from '../../../domain/services/role.service.impl';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
+import { getLabel, IncidentType } from '@/domain/enums/type-incident.enum';
+import { getLabel as getStatusLabel } from '@/domain/enums/incident-status.enum';
+
 
 export function IncidentDetails() {
   const { id } = useParams<{ id: string }>();
-  const incidentService = new IncidentServiceImpl();
-  const workerService = new WorkerServiceImpl();
-  const roleService = new RoleServiceImpl();
-  const productService = new ProductServiceImpl();
-  const recipeService = new RecipeServiceImpl();
+  const incidentService = React.useMemo(() => new IncidentServiceImpl(), []);
+  const workerService = React.useMemo(() => new WorkerServiceImpl(), []);
+  const roleService = React.useMemo(() => new RoleServiceImpl(), []);
+  const productService = React.useMemo(() => new ProductServiceImpl(), []);
+  const recipeService = React.useMemo(() => new RecipeServiceImpl(), []);
 
-  const [reportedByName, setReportedByName] = React.useState<string>('');
+  const [reportedByName] = React.useState<string>('');
   const [roleName, setRoleName] = React.useState<string>('');
   const [productName, setProductName] = React.useState<string>('');
   const [recipeName, setRecipeName] = React.useState<string>('');
@@ -28,27 +31,26 @@ export function IncidentDetails() {
       const incident = await incidentService.findById(id);
       if (!incident) return;
 
-      // Load worker name
-      if (incident.reportedByWorkerId) {
-        const worker = await workerService.findById(incident.reportedByWorkerId);
-        if (worker) setReportedByName(worker.name);
-      }
-
       // Load type-specific data
       switch (incident.type) {
-        case IncidentType.TASK:
+        case IncidentType.TAREAS:
           if (incident.taskId) {
             const role = await roleService.findById(incident.taskId);
             if (role) setRoleName(role.name);
           }
           break;
-        case IncidentType.INVENTORY:
-          if (incident.productId) {
-            const product = await productService.findById(incident.productId);
-            if (product) setProductName(product.name);
+        case IncidentType.INVENTARIOS:
+          if (incident.products?.length) {
+            const productNames = await Promise.all(
+              incident.products.map(async (item) => {
+                const product = await productService.findById(item.productId);
+                return product?.name || '';
+              })
+            );
+            setProductName(productNames.join(', '));
           }
           break;
-        case IncidentType.PRODUCTION:
+        case IncidentType.PRODUCCIONES:
           if (incident.recipeId) {
             const recipe = await recipeService.findById(incident.recipeId);
             if (recipe) setRecipeName(recipe.name);
@@ -58,43 +60,30 @@ export function IncidentDetails() {
     };
 
     loadRelatedData();
-  }, [id]);
-
-  const getIncidentTypeLabel = (type: IncidentType) => {
-    switch (type) {
-      case IncidentType.PRODUCTION:
-        return 'Producción';
-      case IncidentType.TASK:
-        return 'Tarea';
-      case IncidentType.INVENTORY:
-        return 'Inventario';
-      default:
-        return type;
-    }
-  };
-
-  const getTypeSpecificField = (incident: Incident) => {
-    switch (incident.type) {
-      case IncidentType.TASK:
-        return { label: 'Tarea', value: roleName || 'Cargando...' };
-      case IncidentType.INVENTORY:
-        return { label: 'Producto', value: productName || 'Cargando...' };
-      case IncidentType.PRODUCTION:
-        return { label: 'Receta', value: recipeName || 'Cargando...' };
-      default:
-        return null;
-    }
-  };
+  }, [id, incidentService, workerService, roleService, productService, recipeService]);
 
   const getFields = (incident: Incident) => {
     const fields = [
-      { label: 'Tipo', value: getIncidentTypeLabel(incident.type) },
+      { label: 'Tipo', value: getLabel(incident.type) },
+      { label: 'Fecha', value: incident.date instanceof Date ? incident.date.toLocaleDateString() : 'No disponible' },
       { label: 'Descripción', value: incident.description },
       { label: 'Reportado Por', value: reportedByName || 'Cargando...' },
-      { label: 'Estado', value: incident.status === IncidentStatus.PENDING ? 'Pendiente' : 'Resuelto' },
+      { label: 'Estado', value: getStatusLabel(incident.status) },
     ];
 
-    const typeSpecificField = getTypeSpecificField(incident);
+    const typeSpecificField = (() => {
+      switch (incident.type) {
+        case IncidentType.TAREAS:
+          return { label: 'Tarea', value: roleName || 'Cargando...' };
+        case IncidentType.INVENTARIOS:
+          return { label: 'Productos', value: productName || 'Cargando...' };
+        case IncidentType.PRODUCCIONES:
+          return { label: 'Receta', value: recipeName || 'Cargando...' };
+        default:
+          return null;
+      }
+    })();
+
     if (typeSpecificField) {
       fields.push(typeSpecificField);
     }

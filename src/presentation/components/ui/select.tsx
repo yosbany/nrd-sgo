@@ -7,6 +7,13 @@ export interface SelectOption {
   group?: string;
 }
 
+interface OptionGroup {
+  label: string;
+  options: SelectOption[];
+}
+
+type SelectOptionOrGroup = SelectOption | OptionGroup;
+
 type BaseSelectProps = Omit<Props<SelectOption, false, GroupBase<SelectOption>>, 'onChange' | 'value'>;
 
 export interface SelectProps extends BaseSelectProps {
@@ -14,7 +21,7 @@ export interface SelectProps extends BaseSelectProps {
   name?: string;
   value?: string | number;
   onChange?: (value: string) => void;
-  options?: SelectOption[];
+  options?: SelectOptionOrGroup[];
   placeholder?: string;
   searchPlaceholder?: string;
   notFoundText?: string;
@@ -41,27 +48,30 @@ const Select = React.forwardRef<any, SelectProps>(
     error,
     ...props 
   }, ref) => {
-    // Convertir las opciones al formato de grupos para react-select
-    const groupedOptions = React.useMemo(() => {
-      const groups = options.reduce((acc: { [key: string]: SelectOption[] }, option) => {
-        const group = option.group || 'default';
-        if (!acc[group]) {
-          acc[group] = [];
-        }
-        acc[group].push(option);
-        return acc;
-      }, {});
-
-      return Object.entries(groups).map(([label, options]) => ({
-        label: label === 'default' ? undefined : label,
-        options
-      })).filter(group => group.label !== undefined);
-    }, [options]);
-
     // Encontrar la opción seleccionada
     const selectedOption = React.useMemo(() => {
-      if (value === undefined || value === null || value === '') return null;
-      return options.find(option => String(option.value) === String(value)) || null;
+      if (!value) return null;
+
+      const findInOptions = (opts: SelectOption[]) => 
+        opts.find(opt => {
+          const [, optId] = String(opt.value).split(':');
+          return optId === String(value) || String(opt.value) === String(value);
+        });
+
+      // Buscar en opciones planas o agrupadas
+      for (const opt of options) {
+        if ('options' in opt) {
+          const found = findInOptions(opt.options);
+          if (found) return found;
+        } else {
+          const [, optId] = String(opt.value).split(':');
+          if (optId === String(value) || String(opt.value) === String(value)) {
+            return opt;
+          }
+        }
+      }
+      
+      return null;
     }, [value, options]);
 
     // Manejar el cambio de selección
@@ -213,7 +223,7 @@ const Select = React.forwardRef<any, SelectProps>(
         <ReactSelect<SelectOption>
           {...props}
           ref={ref}
-          options={groupedOptions.length > 0 ? groupedOptions : options}
+          options={options}
           value={selectedOption}
           onChange={(newValue) => handleChange(newValue as SelectOption)}
           isDisabled={disabled || readOnly}

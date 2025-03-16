@@ -3,11 +3,14 @@ import { useParams } from 'react-router-dom';
 import { GenericForm } from '../../components/common/GenericForm';
 import { Unit, UnitConversion } from '../../../domain/models/unit.model';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
+import { EntityStatus, getStatusOptions } from '@/domain/enums/entity-status.enum';
 
 export function UnitForm() {
   const { id } = useParams<{ id: string }>();
-  const [unit, setUnit] = React.useState<Partial<Unit>>({});
-  const unitService = new UnitServiceImpl();
+  const [unit, setUnit] = React.useState<Partial<Unit>>({
+    status: EntityStatus.ACTIVO
+  });
+  const unitService = React.useMemo(() => new UnitServiceImpl(), []);
 
   React.useEffect(() => {
     if (id) {
@@ -15,7 +18,7 @@ export function UnitForm() {
         if (data) setUnit(data);
       });
     }
-  }, [id]);
+  }, [id, unitService]);
 
   const fields = [
     {
@@ -29,6 +32,13 @@ export function UnitForm() {
       label: 'Símbolo',
       type: 'text' as const,
       required: true,
+    },
+    {
+      name: 'status',
+      label: 'Estado',
+      type: 'select' as const,
+      required: true,
+      options: getStatusOptions(),
     },
     {
       name: 'conversions',
@@ -56,7 +66,7 @@ export function UnitForm() {
           { 
             header: 'Operación', 
             accessor: 'operation',
-            render: (value: string) => value === 'multiply' ? 'Multiplicar' : 'Dividir'
+            render: (value: unknown) => (value as string) === 'multiply' ? 'Multiplicar' : 'Dividir'
           },
         ],
         form: {

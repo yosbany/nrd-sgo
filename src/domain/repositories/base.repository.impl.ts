@@ -47,13 +47,19 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
   protected mapDocumentToEntity(data: Record<string, unknown>, id: string): T {
     const entityData = { ...data } as Record<string, unknown>;
     
-    // Convertir fechas si existen
-    if (entityData.createdAt) {
-      entityData.createdAt = new Date(entityData.createdAt as string);
-    }
-    if (entityData.updatedAt) {
-      entityData.updatedAt = new Date(entityData.updatedAt as string);
-    }
+    // Convertir todas las fechas
+    Object.entries(entityData).forEach(([key, value]) => {
+      if (typeof value === 'string' && key.toLowerCase().includes('date')) {
+        try {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            entityData[key] = date;
+          }
+        } catch (error) {
+          console.error(`Error converting date for field ${key}:`, error);
+        }
+      }
+    });
 
     // Agregar el ID
     return {
@@ -123,10 +129,20 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
     // Eliminar el id si existe en los datos
     const { id: _, ...dataWithoutId } = data as any;
     
+    // Convertir fechas a ISO strings para Firebase
+    const processedData = Object.entries(dataWithoutId).reduce((acc, [key, value]) => {
+      if (value instanceof Date) {
+        acc[key] = value.toISOString();
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+    
     const newRef = push(this.getRef());
     const id = newRef.key!;
     
-    await set(newRef, dataWithoutId);
+    await set(newRef, processedData);
     
     return {
       ...dataWithoutId,
@@ -145,11 +161,21 @@ export abstract class BaseRepositoryImpl<T extends BaseEntity> implements IBaseR
     // Eliminar el id si existe en los datos de actualización
     const { id: _, ...updateData } = data as any;
     
+    // Convertir fechas a ISO strings para Firebase
+    const processedData = Object.entries(updateData).reduce((acc, [key, value]) => {
+      if (value instanceof Date) {
+        acc[key] = value.toISOString();
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+    
     const currentData = snapshot.val() as Omit<T, 'id'>;
     await set(entityRef, {
       ...currentData,
-      ...updateData,
-      updatedAt: new Date(),
+      ...processedData,
+      updatedAt: new Date().toISOString(),
     });
   }
 

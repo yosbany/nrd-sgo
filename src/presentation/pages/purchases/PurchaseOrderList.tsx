@@ -36,12 +36,12 @@ export function PurchaseOrderList() {
         ]);
 
         const suppliersMap = suppliersData.reduce((acc, supplier) => {
-          acc[supplier.id] = supplier.commercialName;
+          acc[supplier.id as string] = supplier.commercialName;
           return acc;
         }, {} as Record<string, string>);
 
         const unitsMap = unitsData.reduce((acc, unit) => {
-          acc[unit.id] = unit.name;
+          acc[unit.id as string] = unit.name;
           return acc;
         }, {} as Record<string, string>);
 

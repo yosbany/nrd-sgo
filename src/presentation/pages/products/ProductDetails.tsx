@@ -2,10 +2,13 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
 import { ArrayTable } from '../../components/common/ArrayTable';
-import { Product, ProductStatus, ProductSector, SaleChannel } from '../../../domain/models/product.model';
+import { Product, SaleChannel } from '../../../domain/models/product.model';
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
+import { EntityStatus } from '@/domain/enums/entity-status.enum';
+import { Package2, DollarSign, ShoppingCart, Store } from 'lucide-react';
+import { getLabel } from '@/domain/enums/sector.enum';
 
 export function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -24,12 +27,12 @@ export function ProductDetails() {
 
       const unitsMap = unitsData.reduce((acc, unit) => ({
         ...acc,
-        [unit.id]: unit.name
+        [unit.id as string]: unit.name
       }), {});
 
       const suppliersMap = suppliersData.reduce((acc, supplier) => ({
         ...acc,
-        [supplier.id]: supplier.commercialName
+        [supplier.id as string]: supplier.commercialName
       }), {});
 
       setUnits(unitsMap);
@@ -38,25 +41,14 @@ export function ProductDetails() {
     loadData();
   }, []);
 
-  const getProductStatusLabel = (status: ProductStatus) => {
+  const getProductStatusLabel = (status: EntityStatus) => {
     switch (status) {
-      case ProductStatus.ACTIVE:
+      case EntityStatus.ACTIVO:
         return 'Activo';
-      case ProductStatus.INACTIVE:
+      case EntityStatus.INACTIVO:
         return 'Inactivo';
       default:
         return status;
-    }
-  };
-
-  const getProductSectorLabel = (sector: ProductSector) => {
-    switch (sector) {
-      case ProductSector.GENERAL:
-        return 'General';
-      case ProductSector.OTHER:
-        return 'Otro';
-      default:
-        return sector;
     }
   };
 
@@ -83,21 +75,61 @@ export function ProductDetails() {
   };
 
   const getFields = (product: Product) => [
+    { 
+      label: ' ', 
+      value: <div className="flex items-center gap-2 text-lg font-semibold mb-4">
+        <Package2 className="h-5 w-5" /> Información Básica
+      </div>,
+      colSpan: 2 
+    },
     { label: 'Nombre', value: product.name },
     { label: 'SKU', value: product.sku },
-    { label: 'Estado', value: getProductStatusLabel(product.state) },
-    { label: 'Sector', value: product.sector ? getProductSectorLabel(product.sector) : '-' },
-    { label: 'Orden en Sector', value: product.sectorOrder || '-' },
-    { label: 'Stock Deseado', value: product.desiredStock || '-' },
+    { label: 'Estado', value: getProductStatusLabel(product.status) },
+    { label: 'Sector', value: getLabel(product.sector)},
+    { label: 'Orden en Sector', value: product.sectorOrder },
+    { label: 'Stock Deseado', value: product.desiredStock },
+    
+    { 
+      label: ' ', 
+      value: <div className="flex items-center gap-2 text-lg font-semibold mb-4 mt-6">
+        <DollarSign className="h-5 w-5" /> Información de Costos
+      </div>,
+      colSpan: 2 
+    },
+    { label: 'Nombre de Venta', value: product.nameSale || '-' },
     { label: 'Precio de Venta', value: product.salePrice.toLocaleString('es-UY', { style: 'currency', currency: 'UYU' }) },
     { label: 'Costo Unitario de Venta', value: product.salesUnitCost?.toLocaleString('es-UY', { style: 'currency', currency: 'UYU' }) || '-' },
     { label: 'Costo Unitario de Material', value: product.materialUnitCost?.toLocaleString('es-UY', { style: 'currency', currency: 'UYU' }) || '-' },
     { label: 'Precio de Compra', value: product.purchasePrice?.toLocaleString('es-UY', { style: 'currency', currency: 'UYU' }) || '-' },
+    
+    { 
+      label: ' ', 
+      value: <div className="flex items-center gap-2 text-lg font-semibold mb-4 mt-6">
+        <ShoppingCart className="h-5 w-5" /> Unidades
+      </div>,
+      colSpan: 2 
+    },
     { label: 'Unidad de Venta', value: product.salesUnitId ? units[product.salesUnitId] : '-' },
     { label: 'Unidad de Material', value: product.materialUnitId ? units[product.materialUnitId] : '-' },
     { label: 'Unidad de Compra', value: product.purchaseUnitId ? units[product.purchaseUnitId] : '-' },
+    
+    { 
+      label: ' ', 
+      value: <div className="flex items-center gap-2 text-lg font-semibold mb-4 mt-6">
+        <Store className="h-5 w-5" /> Proveedor
+      </div>,
+      colSpan: 2 
+    },
     { label: 'Proveedor Principal', value: product.primarySupplierId ? suppliers[product.primarySupplierId] : '-' },
-    { label: 'Canales de Venta', value: renderSalesChannels(product.salesChannels || []) },
+    
+    { 
+      label: ' ', 
+      value: <div className="flex items-center gap-2 text-lg font-semibold mb-4 mt-6">
+        <Store className="h-5 w-5" /> Canales de Venta
+      </div>,
+      colSpan: 2 
+    },
+    { label: ' ', value: renderSalesChannels(product.salesChannels || []), colSpan: 2 },
   ];
 
   if (!id) return null;

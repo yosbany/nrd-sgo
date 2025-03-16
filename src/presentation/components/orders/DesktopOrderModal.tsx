@@ -7,6 +7,10 @@ import { Button } from '@/presentation/components/ui/button';
 import { Supplier } from '@/domain/models/supplier.model';
 import { Customer } from '@/domain/models/customer.model';
 import { Worker } from '@/domain/models/worker.model';
+import { CustomerOrderServiceImpl } from '@/domain/services/customer-order.service.impl';
+import { PurchaseOrderServiceImpl } from '@/domain/services/purchase-order.service.impl';
+import { ProductionOrderServiceImpl } from '@/domain/services/production-order.service.impl';
+import { toast } from 'sonner';
 
 type OrderType = 'customer' | 'purchase' | 'production';
 
@@ -38,24 +42,47 @@ export function DesktopOrderModal({
   const [selectedType, setSelectedType] = React.useState<OrderCreationType>(null);
   const [orderId, setOrderId] = React.useState('');
   const [entityId, setEntityId] = React.useState('');
+  const [isValidating, setIsValidating] = React.useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     switch (selectedType) {
       case 'empty':
         onCreateEmpty();
+        handleClose();
         break;
       case 'copy':
         if (orderId) {
-          onCreateFromCopy(orderId);
+          setIsValidating(true);
+          try {
+            // Validar que la orden existe antes de cerrar el modal
+            const service = orderType === 'customer' 
+              ? new CustomerOrderServiceImpl()
+              : orderType === 'purchase'
+                ? new PurchaseOrderServiceImpl()
+                : new ProductionOrderServiceImpl();
+
+            const orderExists = await service.findByNro(orderId);
+            if (!orderExists) {
+              toast.error('La orden no existe');
+              return;
+            }
+
+            onCreateFromCopy(orderId);
+            handleClose();
+          } catch (err) {
+            toast.error('Error al validar la orden: ' + (err as Error).message);
+          } finally {
+            setIsValidating(false);
+          }
         }
         break;
       case 'calculated':
         if (entityId) {
           onCreateCalculated(entityId);
+          handleClose();
         }
         break;
     }
-    handleClose();
   };
 
   const handleClose = () => {
@@ -65,46 +92,12 @@ export function DesktopOrderModal({
     onClose();
   };
 
-  const getEntitySelectorConfig = () => {
-    switch (orderType) {
-      case 'customer':
-        return {
-          label: 'Cliente',
-          placeholder: 'Seleccione un cliente',
-          options: customers.map(customer => ({
-            value: customer.id,
-            label: customer.name
-          }))
-        };
-      case 'purchase':
-        return {
-          label: 'Proveedor',
-          placeholder: 'Seleccione un proveedor',
-          options: suppliers.map(supplier => ({
-            value: supplier.id,
-            label: supplier.commercialName
-          }))
-        };
-      case 'production':
-        return {
-          label: 'Trabajador',
-          placeholder: 'Seleccione un trabajador',
-          options: workers.map(worker => ({
-            value: worker.id,
-            label: worker.name
-          }))
-        };
-    }
-  };
-
   // Format current date
   const currentDate = new Intl.DateTimeFormat('es', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   }).format(new Date());
-
-  const selectorConfig = getEntitySelectorConfig();
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -174,9 +167,9 @@ export function DesktopOrderModal({
                 variant="primary"
                 className="w-full h-11"
                 onClick={handleCreate}
-                disabled={!orderId}
+                disabled={!orderId || isValidating}
               >
-                Copiar Orden
+                {isValidating ? 'Validando...' : 'Copiar Orden'}
               </Button>
             </div>
           )}
@@ -184,13 +177,32 @@ export function DesktopOrderModal({
           {selectedType === 'calculated' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">{selectorConfig.label}</label>
+                <label className="text-sm font-medium">
+                  {orderType === 'customer'
+                    ? 'Cliente'
+                    : orderType === 'purchase'
+                    ? 'Proveedor'
+                    : 'Trabajador'}
+                </label>
                 <Select
+                  placeholder="Seleccione una opción"
                   value={entityId}
-                  onChange={(value) => setEntityId(value)}
-                  options={selectorConfig.options}
-                  placeholder={selectorConfig.placeholder}
-                  className="h-11"
+                  onChange={setEntityId}
+                  options={orderType === 'customer' 
+                    ? customers.map(customer => ({
+                        value: customer.id || '',
+                        label: customer.name
+                      }))
+                    : orderType === 'purchase'
+                      ? suppliers.map(supplier => ({
+                          value: supplier.id || '',
+                          label: supplier.commercialName
+                        }))
+                      : workers.map(worker => ({
+                          value: worker.id || '',
+                          label: worker.name
+                        }))
+                  }
                 />
               </div>
               <Button
@@ -199,7 +211,7 @@ export function DesktopOrderModal({
                 onClick={handleCreate}
                 disabled={!entityId}
               >
-                Crear Orden Calculada
+                Calcular Orden
               </Button>
             </div>
           )}

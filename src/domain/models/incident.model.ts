@@ -1,22 +1,20 @@
+import { IncidentStatus } from '../enums/incident-status.enum';
+import { IncidentType } from '../enums/type-incident.enum';
+import { InventoryAffectType } from '../enums/inventory-affect-type.enum';
 import { BaseEntity } from './base.entity';
 
-export enum IncidentStatus {
-  PENDING = 'pending',
-  RESOLVED = 'resolved'
-}
-
-export enum IncidentType {
-  PRODUCTION = 'production',
-  TASK = 'task',
-  INVENTORY = 'inventory'
+export interface ProductItem {
+  productId: string;
+  stockAdjustment: number;
+  type: InventoryAffectType;
 }
 
 export interface Incident extends BaseEntity {
   type: IncidentType;
+  date: Date;
   description: string;
-  reportedByWorkerId: string;
   status: IncidentStatus;
   taskId?: string;
-  productId?: string;
+  products?: ProductItem[];
   recipeId?: string;
 } 

@@ -6,7 +6,7 @@ import { BaseServiceImpl } from './base.service.impl';
 
 export class ParameterServiceImpl extends BaseServiceImpl<Parameter, IParameterRepository> implements IParameterService {
   constructor() {
-    super(ParameterRepositoryImpl);
+    super(ParameterRepositoryImpl, 'parameters');
   }
 
   async findByName(name: string): Promise<Parameter[]> {
@@ -28,14 +28,14 @@ export class ParameterServiceImpl extends BaseServiceImpl<Parameter, IParameterR
 
       // Si el código nuevo es diferente al actual
       if (currentParameter.code !== data.code) {
-        const existingParameters = await this.findByCode(data.code);
         // Verificar que no exista otro parámetro con el mismo código
+        const existingParameters = await this.findByCode(data.code);
         if (existingParameters.length > 0) {
-          throw new Error(`Ya existe un parámetro con el código ${data.code}`);
+          throw new Error('Ya existe un parámetro con ese código');
         }
       }
     }
 
-    return super.update(id, data);
+    return super.update(id, data) as Promise<Parameter>;
   }
 } 

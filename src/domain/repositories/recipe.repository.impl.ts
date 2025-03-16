@@ -9,10 +9,14 @@ export class RecipeRepositoryImpl extends BaseRepositoryImpl<Recipe> implements 
     'recipeType', 
     'yieldUnitId', 
     'yield', 
-    'cost', 
+    'unitCost', 
     'materials', 
     'primaryWorkerId', 
-    'notes'
+    'notes',
+    'state',
+    'desiredProduction',
+    'sku',
+    'salePrice'
   ];
 
   constructor(db: Database) {

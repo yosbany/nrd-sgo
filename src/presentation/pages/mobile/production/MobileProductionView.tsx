@@ -100,6 +100,10 @@ export const MobileProductionView: React.FC = () => {
           <CardTitle>Información General</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Producción</span>
+            <span className="font-medium">#{order.nro}</span>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Estado</span>
             <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>

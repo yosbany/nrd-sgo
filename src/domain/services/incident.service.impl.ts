@@ -1,12 +1,14 @@
-import { Incident, IncidentType, IncidentStatus } from '../models/incident.model';
+import { Incident } from '../models/incident.model';
 import { IIncidentService } from './interfaces/incident.service.interface';
 import { IIncidentRepository } from '../repositories/interfaces/incident.repository.interface';
 import { IncidentRepositoryImpl } from '../repositories/incident.repository.impl';
 import { BaseServiceImpl } from './base.service.impl';
+import { IncidentType } from '../enums/type-incident.enum';
+import { IncidentStatus } from '../enums/incident-status.enum';
 
 export class IncidentServiceImpl extends BaseServiceImpl<Incident, IIncidentRepository> implements IIncidentService {
   constructor() {
-    super(IncidentRepositoryImpl);
+    super(IncidentRepositoryImpl, 'incidents');
   }
 
   async findByType(type: IncidentType): Promise<Incident[]> {
@@ -15,12 +17,6 @@ export class IncidentServiceImpl extends BaseServiceImpl<Incident, IIncidentRepo
 
   async findByStatus(status: IncidentStatus): Promise<Incident[]> {
     return this.repository.findByStatus(status);
-  }
-
-  async findByReportedBy(reportedBy: string): Promise<Incident[]> {
-    // Implementación temporal que filtra por fecha en memoria
-    const incidents = await this.repository.findAll();
-    return incidents.filter(incident => incident.reportedByWorkerId === reportedBy);
   }
 
   async findByDateRange(startDate: Date, endDate: Date): Promise<Incident[]> {
@@ -38,7 +34,9 @@ export class IncidentServiceImpl extends BaseServiceImpl<Incident, IIncidentRepo
 
   async findByProductId(productId: string): Promise<Incident[]> {
     const incidents = await this.repository.findAll();
-    return incidents.filter(incident => incident.productId === productId);
+    return incidents.filter(incident => 
+      incident.products?.some(product => product.productId === productId)
+    );
   }
 
   async findByRecipeId(recipeId: string): Promise<Incident[]> {

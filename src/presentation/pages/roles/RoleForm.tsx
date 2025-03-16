@@ -1,13 +1,14 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericForm } from '../../components/common/GenericForm';
-import { Role, TaskFrequency } from '../../../domain/models/role.model';
+import { Role } from '../../../domain/models/role.model';
 import { RoleServiceImpl } from '../../../domain/services/role.service.impl';
+import { getTaskFrequencyOptions } from '@/domain/enums/task-frequency.enum';
 
 export function RoleForm() {
   const { id } = useParams<{ id: string }>();
   const [role, setRole] = React.useState<Partial<Role>>({});
-  const roleService = new RoleServiceImpl();
+  const roleService = React.useMemo(() => new RoleServiceImpl(), []);
 
   React.useEffect(() => {
     if (id) {
@@ -15,7 +16,7 @@ export function RoleForm() {
         if (data) setRole(data);
       });
     }
-  }, [id]);
+  }, [id, roleService]);
 
   const fields = [
     {
@@ -41,17 +42,10 @@ export function RoleForm() {
           { 
             header: 'Frecuencia', 
             accessor: 'frequency',
-            render: (value: TaskFrequency) => {
-              switch (value) {
-                case TaskFrequency.DAILY:
-                  return 'Diaria';
-                case TaskFrequency.HOURLY:
-                  return 'Por Hora';
-                case TaskFrequency.END_OF_SHIFT:
-                  return 'Fin de Turno';
-                default:
-                  return 'N/A';
-              }
+            render: (value: unknown) => {
+              if (typeof value !== 'string') return 'N/A';
+              const option = getTaskFrequencyOptions().find(opt => opt.value === value);
+              return option?.label || 'N/A';
             }
           },
         ],
@@ -69,11 +63,7 @@ export function RoleForm() {
               label: 'Frecuencia',
               type: 'select' as const,
               required: true,
-              options: [
-                { value: TaskFrequency.DAILY, label: 'Diaria' },
-                { value: TaskFrequency.HOURLY, label: 'Por Hora' },
-                { value: TaskFrequency.END_OF_SHIFT, label: 'Fin de Turno' },
-              ],
+              options: getTaskFrequencyOptions(),
             },
           ],
           emptyState: {

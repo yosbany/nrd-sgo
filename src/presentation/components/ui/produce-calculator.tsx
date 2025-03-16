@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ChangeEvent } from 'react';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Button } from './button';
@@ -6,29 +6,12 @@ import { Input } from './input';
 import { Plus, Trash2, PencilIcon, Printer } from 'lucide-react';
 import { Select, SelectOption } from './select';
 import { toast } from 'sonner';
+import { ProductServiceImpl } from '@/domain/services/product.service.impl';
+import { Product } from '@/domain/models/product.model';
 
 interface ProduceCalculatorProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-// Tipos de productos
-type ProductType = 'FRUTA' | 'VERDURA';
-
-// Interfaz para los productos
-interface Product {
-  id: string;
-  name: string;
-  type: ProductType;
-  wastagePercentage: number;
-  profitPercentage: number;
-}
-
-// Interfaz para los empaques
-interface Package {
-  id: string;
-  name: string;
-  weight: number;
 }
 
 // Lista predefinida de empaques
@@ -39,13 +22,12 @@ const PREDEFINED_PACKAGES: Package[] = [
   { id: 'malla', name: 'Malla', weight: 30 },
 ];
 
-// Lista de productos de ejemplo
-const PRODUCTS: Product[] = [
-  { id: 'manzana', name: 'Manzana', type: 'FRUTA', wastagePercentage: 5, profitPercentage: 25 },
-  { id: 'banana', name: 'Banana', type: 'FRUTA', wastagePercentage: 8, profitPercentage: 25 },
-  { id: 'tomate', name: 'Tomate', type: 'VERDURA', wastagePercentage: 10, profitPercentage: 25 },
-  { id: 'lechuga', name: 'Lechuga', type: 'VERDURA', wastagePercentage: 15, profitPercentage: 25 },
-];
+// Interfaz para los empaques
+interface Package {
+  id: string;
+  name: string;
+  weight: number;
+}
 
 interface CalculatorData {
   productId: string;
@@ -69,13 +51,6 @@ interface OrderItem extends CalculatorData {
 const STORAGE_KEY = 'produce-calculator-data';
 const ORDER_STORAGE_KEY = 'produce-order-items';
 
-// Convertir productos a opciones para el Select
-const PRODUCT_OPTIONS: SelectOption[] = PRODUCTS.map(product => ({
-  value: product.id,
-  label: product.name,
-  group: product.type === 'FRUTA' ? 'Frutas' : 'Verduras'
-}));
-
 // Convertir empaques a opciones para el Select
 const PACKAGE_OPTIONS: SelectOption[] = PREDEFINED_PACKAGES.map(pkg => ({
   value: pkg.id,
@@ -93,6 +68,29 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const productService = new ProductServiceImpl();
+
+  // Cargar productos al montar el componente
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const productsData = await productService.findAll();
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Error al cargar productos:', error);
+        toast.error('Error al cargar los productos');
+      }
+    };
+    loadProducts();
+  }, []);
+
+  // Convertir productos a opciones para el Select
+  const productOptions: SelectOption[] = products.map(product => ({
+    value: product.id || '',
+    label: product.name,
+    group: product.isMaterial ? 'Materiales' : 'Productos'
+  }));
 
   // Cargar datos del localStorage al montar el componente
   useEffect(() => {
@@ -107,110 +105,56 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
   }, []);
 
   // Calcular resultados del producto actual
-  const results = calculateResults(data);
-  const selectedProduct = PRODUCTS.find(p => p.id === data.productId);
+  const selectedProduct = products.find(p => p.id === data.productId);
 
   // Calcular totales de la orden
   const orderTotal = orderItems.reduce((sum, item) => sum + parseFloat(item.results.sellingPrice), 0);
   const orderProfit = orderItems.reduce((sum, item) => sum + parseFloat(item.results.profitAmount), 0);
 
-  // Manejar cambios en los inputs
+  // Manejadores de eventos
   const handleChange = (field: keyof CalculatorData) => (
-    value: string | React.ChangeEvent<HTMLInputElement>
+    value: string | ChangeEvent<HTMLInputElement>
   ) => {
     const newValue = typeof value === 'string' ? value : value.target.value;
-    const newData = {
-      ...data,
-      [field]: newValue,
-      lastUsed: new Date().toLocaleString(),
-    };
-    setData(newData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    setData(prev => ({ ...prev, [field]: newValue }));
   };
 
-  // Iniciar edición de un producto
-  const handleStartEdit = (itemId: string) => {
-    const itemToEdit = orderItems.find(item => item.id === itemId);
-    if (itemToEdit) {
-      setData({
-        productId: itemToEdit.productId,
-        totalWeight: itemToEdit.totalWeight,
-        totalCost: itemToEdit.totalCost,
-        packageId: itemToEdit.packageId,
-        profitPercentage: itemToEdit.profitPercentage,
-      });
-      setEditingItemId(itemId);
-    }
-  };
+  const handleAddItem = () => {
+    if (!data.productId || !data.totalWeight || !data.totalCost || !data.profitPercentage) return;
 
-  // Cancelar edición
-  const handleCancelEdit = () => {
-    handleClear();
-    setEditingItemId(null);
-  };
-
-  // Guardar cambios de edición
-  const handleSaveEdit = () => {
-    if (!editingItemId || !selectedProduct || !data.totalWeight || !data.totalCost || !data.profitPercentage) return;
-
-    const updatedItems = orderItems.map(item => {
-      if (item.id === editingItemId) {
-        return {
-          ...item,
-          ...data,
-          results: calculateResults(data)
-        };
-      }
-      return item;
-    });
-
-    setOrderItems(updatedItems);
-    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(updatedItems));
-    handleCancelEdit();
-  };
-
-  // Agregar producto a la orden
-  const handleAddToOrder = () => {
-    if (!selectedProduct || !data.totalWeight || !data.totalCost || !data.profitPercentage) return;
-
+    const results = calculateResults(data);
     const newItem: OrderItem = {
       id: crypto.randomUUID(),
       ...data,
-      results: results
+      results
     };
 
-    const updatedOrderItems = [...orderItems, newItem];
-    setOrderItems(updatedOrderItems);
-    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(updatedOrderItems));
-
-    handleClear();
-  };
-
-  // Eliminar producto de la orden
-  const handleRemoveItem = (itemId: string) => {
-    const updatedOrderItems = orderItems.filter(item => item.id !== itemId);
-    setOrderItems(updatedOrderItems);
-    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(updatedOrderItems));
-  };
-
-  // Limpiar datos del formulario actual
-  const handleClear = () => {
-    const clearedData: CalculatorData = {
+    setOrderItems(prev => [...prev, newItem]);
+    setData({
       productId: '',
       totalWeight: '',
       totalCost: '',
       packageId: 'bolsa-plastica',
       profitPercentage: '25',
-      lastUsed: new Date().toLocaleString(),
-    };
-    setData(clearedData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clearedData));
+    });
   };
 
-  // Limpiar toda la orden
+  const handleEditItem = (itemId: string) => (event: React.MouseEvent) => {
+    event.preventDefault();
+    const itemToEdit = orderItems.find(item => item.id === itemId);
+    if (itemToEdit) {
+      setData(itemToEdit);
+      setEditingItemId(itemId);
+    }
+  };
+
+  const handleDeleteItem = (itemId: string) => (event: React.MouseEvent) => {
+    event.preventDefault();
+    setOrderItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
   const handleClearOrder = () => {
     setOrderItems([]);
-    localStorage.removeItem(ORDER_STORAGE_KEY);
   };
 
   const handlePrintLabels = () => {
@@ -223,18 +167,16 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
 
     // Generar el contenido HTML para las etiquetas
     const labelsContent = orderItems.map((item) => {
-      const product = PRODUCTS.find(p => p.id === item.productId);
+      const product = products.find(p => p.id === item.productId);
       return `
-        <div style="page-break-after: always; margin-bottom: 15px;">
-          <div style="font-size: 24px; font-weight: bold; margin-bottom: 5px;">
+        <div style="padding: 5mm 10mm;">
+          <div style="font-size: 16pt; font-weight: bold; text-align: left; margin-bottom: 1mm;">
             ${product?.name || 'Producto'}
           </div>
-          <div style="font-size: 18px; margin-bottom: 5px;">
-            SKU: ${product?.id || 'N/A'}
-          </div>
-          <div style="font-size: 28px; font-weight: bold;">
+          <div style="font-size: 20pt; font-weight: bold; text-align: right;">
             $${item.results.sellingPrice}
           </div>
+          <div style="margin-top: 10mm; border-top: 1px dashed #000; height: 1px;"></div>
         </div>
       `;
     }).join('');
@@ -243,19 +185,22 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
     printWindow.document.write(`
       <html>
         <head>
+          <title>Etiquetas de Productos</title>
           <style>
             @page {
               size: 80mm auto;
-              margin: 5mm;
+              margin: 0;
             }
             body {
               font-family: Arial, sans-serif;
-              width: 70mm;
-              margin: 0 auto;
-              padding: 2mm;
+              margin: 0;
+              padding: 0;
+              width: 80mm;
             }
-            div {
-              text-align: center;
+            @media print {
+              body {
+                width: 80mm;
+              }
             }
           </style>
         </head>
@@ -266,7 +211,13 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
     `);
 
     printWindow.document.close();
-    printWindow.print();
+    
+    // Esperar a que los estilos se carguen antes de imprimir
+    setTimeout(() => {
+      printWindow.print();
+      // Cerrar la ventana después de imprimir
+      printWindow.close();
+    }, 250);
   };
 
   return (
@@ -305,7 +256,7 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
                           label="Producto"
                           value={data.productId}
                           onChange={handleChange('productId')}
-                          options={PRODUCT_OPTIONS}
+                          options={productOptions}
                           placeholder="Seleccionar producto"
                           searchPlaceholder="Buscar producto..."
                           notFoundText="No se encontraron productos"
@@ -361,11 +312,11 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
                         <div className="flex justify-end space-x-2 pt-2">
                           {editingItemId ? (
                             <>
-                              <Button variant="secondary" onClick={handleCancelEdit} size="sm">
+                              <Button variant="secondary" onClick={handleDeleteItem(orderItems[0].id)} size="sm">
                                 Cancelar
                               </Button>
                               <Button 
-                                onClick={handleSaveEdit}
+                                onClick={handleAddItem}
                                 size="sm"
                                 disabled={!selectedProduct || !data.totalWeight || !data.totalCost || !data.profitPercentage}
                               >
@@ -374,11 +325,11 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
                             </>
                           ) : (
                             <>
-                              <Button variant="secondary" onClick={handleClear} size="sm">
+                              <Button variant="secondary" onClick={handleClearOrder} size="sm">
                                 Limpiar
                               </Button>
                               <Button 
-                                onClick={handleAddToOrder}
+                                onClick={handleAddItem}
                                 size="sm"
                                 disabled={!selectedProduct || !data.totalWeight || !data.totalCost || !data.profitPercentage}
                               >
@@ -407,7 +358,7 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
                         </p>
                       ) : (
                         orderItems.map((item) => {
-                          const product = PRODUCTS.find(p => p.id === item.productId);
+                          const product = products.find(p => p.id === item.productId);
                           return (
                             <div 
                               key={item.id}
@@ -415,18 +366,18 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <span className="font-medium text-gray-900 dark:text-white">
-                                  {product?.name}
+                                  {product?.name || 'Producto no encontrado'}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => handleStartEdit(item.id)}
+                                    onClick={handleEditItem(item.id)}
                                     className="text-blue-500 hover:text-blue-700 dark:text-blue-400"
                                     disabled={editingItemId !== null}
                                   >
                                     <PencilIcon className="h-4 w-4" />
                                   </button>
                                   <button
-                                    onClick={() => handleRemoveItem(item.id)}
+                                    onClick={handleDeleteItem(item.id)}
                                     className="text-red-500 hover:text-red-700 dark:text-red-400"
                                     disabled={editingItemId === item.id}
                                   >
@@ -506,20 +457,20 @@ export function ProduceCalculator({ isOpen, onClose }: ProduceCalculatorProps) {
   );
 }
 
-function calculateResults(data: CalculatorData) {
+const calculateResults = (data: CalculatorData): OrderItem['results'] => {
   const totalWeight = parseFloat(data.totalWeight) || 0;
   const totalCost = parseFloat(data.totalCost) || 0;
   const profitPercentage = parseFloat(data.profitPercentage) || 0;
-  
-  // Cálculo de valores unitarios y ganancia
-  const unitPrice = totalCost / totalWeight;
-  const profitAmount = (totalCost * profitPercentage) / 100;
-  const sellingPrice = totalCost + profitAmount;
+
+  const unitWeight = (totalWeight / 1000).toFixed(2);
+  const unitPrice = (totalCost / totalWeight).toFixed(2);
+  const profitAmount = ((totalCost * profitPercentage) / 100).toFixed(2);
+  const sellingPrice = (totalCost + parseFloat(profitAmount)).toFixed(2);
 
   return {
-    unitWeight: totalWeight.toFixed(2),
-    unitPrice: unitPrice.toFixed(2),
-    profitAmount: profitAmount.toFixed(2),
-    sellingPrice: sellingPrice.toFixed(2),
+    unitWeight,
+    unitPrice,
+    profitAmount,
+    sellingPrice
   };
-} 
+}; 

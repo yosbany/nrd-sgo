@@ -1,32 +1,44 @@
-import { Sequence } from '../models/sequence.model';
 import { SequenceService } from './sequence.service';
 import { database } from '@/config/firebase';
+import { ref, get, set } from 'firebase/database';
 
 export class SequenceServiceImpl implements SequenceService {
-  private sequences: { [key: string]: Sequence } = {};
+  private readonly SEQUENCES_PATH = 'sequences';
 
   async getNextNumber(modelName: string): Promise<string> {
-    // Buscar la secuencia actual para el modelo
-    let sequence = this.sequences[modelName];
-
-    // Si no existe, crear una nueva secuencia
-    if (!sequence) {
-      sequence = {
-        id: crypto.randomUUID(),
-        nro: '00001',
-        modelName,
-        lastNumber: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      this.sequences[modelName] = sequence;
-    } else {
-      // Incrementar el número
-      sequence.lastNumber += 1;
-      sequence.updatedAt = new Date();
+    if (!modelName) {
+      throw new Error('El nombre del modelo es requerido para generar la secuencia');
     }
 
-    // Formatear el número con ceros a la izquierda
-    return sequence.lastNumber.toString().padStart(5, '0');
+    try {
+      // Usar directamente Firebase para las secuencias
+      const sequenceRef = ref(database, `${this.SEQUENCES_PATH}/${modelName}`);
+      const snapshot = await get(sequenceRef);
+
+      if (!snapshot.exists()) {
+        // Si no existe, crear una nueva secuencia
+        await set(sequenceRef, {
+          lastNumber: 1,
+          updatedAt: new Date().toISOString()
+        });
+        return '00001';
+      }
+
+      // Si existe, incrementar el número
+      const sequence = snapshot.val();
+      const nextNumber = (sequence.lastNumber || 0) + 1;
+
+      // Actualizar la secuencia
+      await set(sequenceRef, {
+        lastNumber: nextNumber,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Formatear el número con ceros a la izquierda
+      return nextNumber.toString().padStart(5, '0');
+    } catch (error) {
+      console.error('Error getting next sequence number:', error);
+      throw new Error(`Error al generar el siguiente número de secuencia para ${modelName}`);
+    }
   }
 } 

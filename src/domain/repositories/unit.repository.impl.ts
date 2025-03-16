@@ -7,7 +7,8 @@ export class UnitRepositoryImpl extends BaseRepositoryImpl<Unit> implements IUni
   protected modelProperties: (keyof Unit)[] = [
     'name', 
     'symbol', 
-    'conversions'
+    'conversions',
+    'status',
   ];
 
   constructor(db: Database) {

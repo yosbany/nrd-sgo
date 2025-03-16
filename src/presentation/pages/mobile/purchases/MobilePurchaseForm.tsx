@@ -37,7 +37,6 @@ export const MobilePurchaseForm: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [formData, setFormData] = React.useState<Partial<PurchaseOrder>>({
     orderDate: new Date(),
-    status: OrderStatus.PENDIENTE,
     supplierId: '',
     products: []
   });
@@ -218,7 +217,7 @@ export const MobilePurchaseForm: React.FC = () => {
               onClick={() => setIsGeneralOpen(!isGeneralOpen)}
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Información General</span>
+                <span className="text-sm font-bold uppercase">INFORMACIÓN GENERAL</span>
                 {!isGeneralOpen && (
                   <span className="text-xs text-gray-500">
                     {formData.supplierId ? suppliers.find(s => s.id === formData.supplierId)?.commercialName : 'Sin asignar'}
@@ -267,27 +266,6 @@ export const MobilePurchaseForm: React.FC = () => {
                         {supplier.commercialName}
                       </option>
                     ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm text-gray-600">Estado</Label>
-                  <select
-                    id="status"
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as OrderStatus }))}
-                    disabled={!id}
-                  >
-                    {id ? (
-                      Object.values(OrderStatus).map((status) => (
-                        <option key={status} value={status}>
-                          {OrderStatusLabel[status]}
-                        </option>
-                      ))
-                    ) : (
-                      <option value={OrderStatus.PENDIENTE}>{OrderStatusLabel[OrderStatus.PENDIENTE]}</option>
-                    )}
                   </select>
                 </div>
               </div>
@@ -417,13 +395,13 @@ export const MobilePurchaseForm: React.FC = () => {
                               <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-600">Costo unitario:</span>
                                 <span className="font-medium">
-                                  ${(item.purchasePrice || 0).toFixed(2)}
+                                  ${Number(item.purchasePrice || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Total:</span>
                                 <span className="font-semibold text-blue-600">
-                                  ${((item.purchasePrice || 0) * existingItem.quantity).toFixed(2)}
+                                  ${(Number(item.purchasePrice || 0) * existingItem.quantity).toFixed(2)}
                                 </span>
                               </div>
                             </div>

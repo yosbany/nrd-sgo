@@ -1,3 +1,4 @@
+import { EntityStatus } from '../enums/entity-status.enum';
 import { BaseEntity } from './base.entity';
 
 export interface Parameter extends BaseEntity {
@@ -5,4 +6,5 @@ export interface Parameter extends BaseEntity {
   code: string;
   value: string | number;
   description?: string;
+  status: EntityStatus;
 }

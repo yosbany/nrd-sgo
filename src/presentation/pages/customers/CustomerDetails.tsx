@@ -1,8 +1,8 @@
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericDetails } from '../../components/common/GenericDetails';
-import { Customer, CustomerStatus } from '../../../domain/models/customer.model';
+import { Customer } from '../../../domain/models/customer.model';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
+import { getLabel } from '@/domain/enums/entity-status.enum';
 
 export function CustomerDetails() {
   const { id } = useParams<{ id: string }>();
@@ -10,10 +10,10 @@ export function CustomerDetails() {
 
   const getFields = (customer: Customer) => [
     { label: 'Nombre', value: customer.name },
-    { label: 'Teléfono', value: customer.phone || '-' },
-    { label: 'Email', value: customer.email || '-' },
-    { label: 'Dirección', value: customer.address || '-' },
-    { label: 'Estado', value: customer.status === CustomerStatus.ACTIVE ? 'Activo' : 'Inactivo' },
+    { label: 'Teléfono', value: customer.phone },
+    { label: 'Email', value: customer.email },
+    { label: 'Dirección', value: customer.address, colSpan: 2  },
+    { label: 'Estado', value: getLabel(customer.status) },
   ];
 
   if (!id) return null;

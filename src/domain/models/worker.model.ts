@@ -1,3 +1,4 @@
+import { EntityStatus } from '../enums/entity-status.enum';
 import { BaseEntity } from './base.entity';
 
 export enum PaymentStatus {
@@ -35,4 +36,5 @@ export interface Worker extends BaseEntity {
   bonusSalaryBalance: number;
   leaveHistory?: LeaveHistory[];
   payments?: Payment[];
+  status: EntityStatus;
 } 

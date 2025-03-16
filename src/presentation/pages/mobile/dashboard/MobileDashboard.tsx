@@ -66,9 +66,9 @@ export const MobileDashboard: React.FC = () => {
       title: 'Producción',
       icon: FaIndustry,
       path: '/mobile/production',
-      description: 'Control de órdenes de producción',
+      description: 'Gestión de órdenes de producción',
       count: orderCounts.production,
-      status: 'En Progreso'
+      status: 'Pendientes'
     }
   ];
 

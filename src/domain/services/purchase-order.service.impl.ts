@@ -4,10 +4,14 @@ import { IPurchaseOrderRepository } from '../repositories/interfaces/purchase-or
 import { PurchaseOrderRepositoryImpl } from '../repositories/purchase-order.repository.impl';
 import { BaseServiceImpl } from './base.service.impl';
 import { OrderStatus } from '../enums/order-status.enum';
+import { SequenceServiceImpl } from './sequence.service.impl';
 
 export class PurchaseOrderServiceImpl extends BaseServiceImpl<PurchaseOrder, IPurchaseOrderRepository> implements IPurchaseOrderService {
+  private sequenceService: SequenceServiceImpl;
+
   constructor() {
     super(PurchaseOrderRepositoryImpl, 'purchase-orders');
+    this.sequenceService = new SequenceServiceImpl();
   }
 
   private calculateTotals(order: Partial<PurchaseOrder>): void {
@@ -58,6 +62,7 @@ export class PurchaseOrderServiceImpl extends BaseServiceImpl<PurchaseOrder, IPu
 
   async create(order: Partial<PurchaseOrder>): Promise<PurchaseOrder> {
     order.status = order.status || OrderStatus.PENDIENTE;
+    order.nro = await this.sequenceService.getNextNumber('purchase-orders');
     
     // Si es una orden calculada, cargar los productos de la orden de referencia
     if (order.referenceOrderNumber) {

@@ -1,12 +1,13 @@
 import React from 'react';
 import { GenericList } from '../../components/common/GenericList';
-import { Recipe, RecipeType } from '../../../domain/models/recipe.model';
+import { Recipe } from '../../../domain/models/recipe.model';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
+import { getStatusOptions } from '@/domain/enums/entity-status.enum';
 
 export function RecipeList() {
   const recipeService = new RecipeServiceImpl();
-  const unitService = new UnitServiceImpl();
+  const unitService = React.useMemo(() => new UnitServiceImpl(), []);
   const [units, setUnits] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
@@ -15,8 +16,8 @@ export function RecipeList() {
         const unitsData = await unitService.findAll();
         const unitsMap = unitsData.reduce((acc, unit) => ({
           ...acc,
-          [unit.id]: unit.symbol
-        }), {});
+          [unit.id!]: unit.name
+        }), {} as Record<string, string>);
         setUnits(unitsMap);
       } catch (error) {
         console.error('Error loading units:', error);
@@ -24,36 +25,15 @@ export function RecipeList() {
     };
 
     loadUnits();
-  }, []);
-
-  const getRecipeTypeLabel = (type: RecipeType) => {
-    switch (type) {
-      case RecipeType.SALE_RECIPE:
-        return 'Receta de Venta';
-      case RecipeType.INTERNAL_USE:
-        return 'Uso Interno';
-      default:
-        return type;
-    }
-  };
+  }, [unitService]);
 
   const columns = [
     { header: 'Nombre', accessor: 'name' as keyof Recipe },
     {
-      header: 'Tipo',
-      accessor: 'recipeType' as keyof Recipe,
-      render: (item: Recipe) => getRecipeTypeLabel(item.recipeType),
-    },
-    {
-      header: 'Rendimiento',
-      accessor: 'yield' as keyof Recipe,
-      render: (item: Recipe) =>
-        `${item.yield} ${units[item.yieldUnitId] || ''}`,
-    },
-    {
-      header: 'Materiales',
-      accessor: 'materials' as keyof Recipe,
-      render: (item: Recipe) => item.materials?.length || 0,
+      header: 'Estado',
+      accessor: 'status' as keyof Recipe,
+      type: 'tag' as const,
+      tags: getStatusOptions()
     },
   ];
 

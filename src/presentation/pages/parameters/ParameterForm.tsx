@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { GenericForm } from '../../components/common/GenericForm';
 import { Parameter } from '../../../domain/models/parameter.model';
 import { ParameterServiceImpl } from '../../../domain/services/parameter.service.impl';
+import { getOptions } from '@/domain/enums/entity-status.enum';
 
 export function ParameterForm() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +36,13 @@ export function ParameterForm() {
       label: 'Valor',
       type: 'text' as const,
       required: true,
+    },
+    {
+      name: 'status',
+      label: 'Estado',
+      type: 'select' as const,
+      required: true,
+      options: getOptions(),
     },
     {
       name: 'description',

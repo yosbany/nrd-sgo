@@ -8,8 +8,9 @@ export class ParameterRepositoryImpl extends BaseRepositoryImpl<Parameter> imple
     'name',
     'code',
     'value',
-    'description'
-  ];
+    'description',
+    'status'
+    ];
 
   constructor(db: Database) {
     super(db, 'parameters');

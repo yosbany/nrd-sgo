@@ -4,10 +4,14 @@ import { ICustomerOrderRepository } from '../repositories/interfaces/customer-or
 import { CustomerOrderRepositoryImpl } from '../repositories/customer-order.repository.impl';
 import { BaseServiceImpl } from './base.service.impl';
 import { OrderStatus } from '../enums/order-status.enum';
+import { SequenceServiceImpl } from './sequence.service.impl';
 
 export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICustomerOrderRepository> implements ICustomerOrderService {
+  private sequenceService: SequenceServiceImpl;
+
   constructor() {
     super(CustomerOrderRepositoryImpl, 'customer-orders');
+    this.sequenceService = new SequenceServiceImpl();
   }
 
   private calculateTotals(order: Partial<CustomerOrder>): void {
@@ -55,6 +59,7 @@ export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICu
 
   async create(order: Partial<CustomerOrder>): Promise<CustomerOrder> {
     order.status = order.status || OrderStatus.PENDIENTE;
+    order.nro = await this.sequenceService.getNextNumber('customer-orders');
     this.calculateTotals(order);
     this.validateOrder(order);
     return super.create(order as CustomerOrder);
@@ -95,14 +100,13 @@ export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICu
     return orders.find(order => order.nro === nro) || null;
   }
 
-  async copyOrder(nro: string): Promise<Partial<CustomerOrder>> {
+  async copyOrder(nro: string): Promise<CustomerOrder> {
     const originalOrder = await this.findByNro(nro);
     if (!originalOrder) {
       throw new Error(`La orden número ${nro} no existe`);
     }
 
     // Crear una nueva orden con los datos de la original
-    // excepto el id, nro y fecha
     const newOrder: Partial<CustomerOrder> = {
       orderDate: new Date(), // Fecha actual
       status: OrderStatus.PENDIENTE, // Siempre pendiente para nueva orden
@@ -112,6 +116,11 @@ export class CustomerOrderServiceImpl extends BaseServiceImpl<CustomerOrder, ICu
       totalProducts: originalOrder.totalProducts
     };
 
-    return newOrder;
+    // Crear la orden directamente para asegurar el consecutivo correcto
+    const createdOrder = await this.create(newOrder);
+    if (!createdOrder) {
+      throw new Error('Error al crear la orden copiada');
+    }
+    return createdOrder;
   }
 } 

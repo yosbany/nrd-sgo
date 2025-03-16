@@ -1,7 +1,7 @@
-import React from 'react';
 import { GenericList } from '../../components/common/GenericList';
-import { Customer, CustomerStatus } from '../../../domain/models/customer.model';
+import { Customer } from '../../../domain/models/customer.model';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
+import { getStatusOptions } from '@/domain/enums/entity-status.enum';
 
 export function CustomerList() {
   const customerService = new CustomerServiceImpl();
@@ -17,18 +17,7 @@ export function CustomerList() {
       header: 'Estado',
       accessor: 'status' as keyof Customer,
       type: 'tag' as const,
-      tags: [
-        { 
-          value: CustomerStatus.ACTIVE, 
-          label: 'Activo', 
-          color: 'success' as const 
-        },
-        { 
-          value: CustomerStatus.INACTIVE, 
-          label: 'Inactivo', 
-          color: 'secondary' as const 
-        }
-      ]
+      tags: getStatusOptions()
     },
   ];
 

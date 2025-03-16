@@ -8,12 +8,14 @@ import { ProductServiceImpl } from '@/domain/services/product.service.impl';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderStatusLabel, getStatusColor } from '@/domain/enums/order-status.enum';
+import { Supplier } from '@/domain/models/supplier.model';
+import { Product } from '@/domain/models/product.model';
 
 export const MobilePurchaseView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = React.useState<PurchaseOrder | null>(null);
-  const [suppliers, setSuppliers] = React.useState<Array<{ id: string; commercialName: string }>>([]);
-  const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
+  const [products, setProducts] = React.useState<Product[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -100,6 +102,10 @@ export const MobilePurchaseView: React.FC = () => {
           <CardTitle>Información General</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Compra</span>
+            <span className="font-medium">#{order.nro}</span>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Estado</span>
             <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>

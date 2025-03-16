@@ -103,7 +103,7 @@ export const PrintOrder: React.FC<PrintOrderProps> = ({
   items,
 }) => {
   const totalProducts = items.length;
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = Number(items.reduce((sum, item) => sum + item.quantity, 0));
 
   return (
     <div style={styles.printContainer}>

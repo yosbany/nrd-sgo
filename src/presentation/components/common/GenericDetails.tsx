@@ -8,11 +8,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageHeader } from './PageHeader';
 import { ConfirmDialog } from './ConfirmDialog';
-import { useLogger } from '@/lib/logger';
 
 interface Field {
   label: string;
   value: string | number | React.ReactNode;
+  colSpan?: number;
 }
 
 interface GenericDetailsProps<T extends BaseEntity> {
@@ -32,7 +32,6 @@ export function GenericDetails<T extends BaseEntity>({
   service,
   id,
 }: GenericDetailsProps<T>) {
-  const log = useLogger('GenericDetails');
   const navigate = useNavigate();
   const [data, setData] = React.useState<T | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -41,45 +40,36 @@ export function GenericDetails<T extends BaseEntity>({
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        log.info('Cargando detalles del registro', { id, title });
+        console.log('Cargando detalles', { id });
         const result = await service.findById(id);
-        if (result) {
-          log.debug('Registro cargado exitosamente', { id });
-          setData(result);
-        } else {
-          log.warn('Registro no encontrado', { id });
-          toast.error('Registro no encontrado');
-          navigate(backPath);
-        }
+        setData(result);
+        console.log('Detalles cargados exitosamente', { data: result });
       } catch (error) {
-        log.error('Error al cargar el registro', { error, id });
-        console.error('Error al cargar el registro:', error);
-        toast.error('Error al cargar el registro');
-        navigate(backPath);
+        console.error('Error al cargar los detalles', { error });
+        toast.error('Error al cargar los detalles');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [id, service, backPath, navigate, title, log]);
+  }, [id, service]);
 
   const handleDelete = async () => {
     try {
-      log.info('Iniciando eliminación del registro', { id });
+      console.log('Eliminando registro', { id });
       await service.delete(id);
-      log.debug('Registro eliminado exitosamente', { id });
+      console.log('Registro eliminado exitosamente', { id });
       toast.success('Registro eliminado exitosamente');
       navigate(backPath);
     } catch (error) {
-      log.error('Error al eliminar el registro', { error, id });
-      console.error('Error al eliminar el registro:', error);
+      console.error('Error al eliminar el registro', { error });
       toast.error('Error al eliminar el registro');
     }
   };
 
   if (isLoading || !data) {
-    log.debug('Mostrando estado de carga', { isLoading, hasData: !!data });
+    console.log('Mostrando estado de carga', { isLoading, hasData: !!data });
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
@@ -88,7 +78,7 @@ export function GenericDetails<T extends BaseEntity>({
   }
 
   const fieldValues = fields(data);
-  log.debug('Renderizando detalles', { 
+  console.log('Renderizando detalles', { 
     fieldsCount: fieldValues.length,
     hasData: !!data 
   });
@@ -117,7 +107,7 @@ export function GenericDetails<T extends BaseEntity>({
             <Button
               variant="ghost"
               onClick={() => {
-                log.debug('Iniciando proceso de eliminación', { id });
+                console.log('Iniciando proceso de eliminación', { id });
                 setDeleteDialogOpen(true);
               }}
               className="flex items-center gap-2 hover:text-destructive"
@@ -135,7 +125,8 @@ export function GenericDetails<T extends BaseEntity>({
             <div 
               key={index} 
               className={cn(
-                React.isValidElement(field.value) ? "col-span-full" : ""
+                React.isValidElement(field.value) ? "col-span-full" : "",
+                field.colSpan ? `md:col-span-${field.colSpan}` : ""
               )}
             >
               {React.isValidElement(field.value) ? (

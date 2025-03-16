@@ -7,7 +7,7 @@ import { CustomerServiceImpl } from '../../../domain/services/customer.service.i
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { RecipeServiceImpl } from '../../../domain/services/recipe.service.impl';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
-import { OrderStatus } from '@/domain/enums/order-status.enum';
+import { getStatusOptions } from '@/domain/enums/order-status.enum';
 import { Product } from '@/domain/models/product.model';
 import { Recipe } from '@/domain/models/recipe.model';
 import { DesktopOrderModal } from '@/presentation/components/orders/DesktopOrderModal';
@@ -49,12 +49,16 @@ export function CustomerOrderList() {
         ]);
 
         const customersMap = customersData.reduce((acc, customer) => {
-          acc[customer.id] = customer.name;
+          if (customer.id && customer.name) {
+            acc[customer.id] = customer.name;
+          }
           return acc;
         }, {} as Record<string, string>);
 
         const unitsMap = unitsData.reduce((acc, unit) => {
-          acc[unit.id] = unit.name;
+          if (unit.id && unit.name) {
+            acc[unit.id] = unit.name;
+          }
           return acc;
         }, {} as Record<string, string>);
 
@@ -173,28 +177,7 @@ export function CustomerOrderList() {
       header: 'Estado',
       accessor: 'status' as keyof CustomerOrder,
       type: 'tag' as const,
-      tags: [
-        { 
-          value: OrderStatus.PENDIENTE, 
-          label: OrderStatus.PENDIENTE, 
-          color: 'warning' as const 
-        },
-        { 
-          value: OrderStatus.ENVIADA, 
-          label: OrderStatus.ENVIADA, 
-          color: 'info' as const 
-        },
-        { 
-          value: OrderStatus.COMPLETADA, 
-          label: OrderStatus.COMPLETADA, 
-          color: 'success' as const 
-        },
-        { 
-          value: OrderStatus.CANCELADA, 
-          label: OrderStatus.CANCELADA, 
-          color: 'danger' as const 
-        }
-      ]
+      tags: getStatusOptions()
     },
   ];
 

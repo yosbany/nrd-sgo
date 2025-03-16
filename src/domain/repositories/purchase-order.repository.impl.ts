@@ -6,6 +6,7 @@ import { OrderStatus } from '../enums/order-status.enum';
 
 export class PurchaseOrderRepositoryImpl extends BaseRepositoryImpl<PurchaseOrder> implements IPurchaseOrderRepository {
   protected modelProperties: (keyof PurchaseOrder)[] = [
+    'nro',
     'orderDate',
     'status',
     'supplierId',

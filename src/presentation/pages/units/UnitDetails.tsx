@@ -3,6 +3,7 @@ import { GenericDetails } from '../../components/common/GenericDetails';
 import { Unit, UnitConversion } from '../../../domain/models/unit.model';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import React from 'react';
+import { EntityStatus } from '@/domain/enums/entity-status.enum';
 
 export function UnitDetails() {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +15,7 @@ export function UnitDetails() {
       const unitsData = await unitService.findAll();
       const unitsMap = unitsData.reduce((acc, unit) => ({
         ...acc,
-        [unit.id]: unit.name
+        [unit.id as string]: unit.name
       }), {});
       setUnits(unitsMap);
     };
@@ -53,6 +54,7 @@ export function UnitDetails() {
   const getFields = (unit: Unit) => [
     { label: 'Nombre', value: unit.name },
     { label: 'Símbolo', value: unit.symbol },
+    { label: 'Estado', value: unit.status === EntityStatus.ACTIVO ? 'Activo' : 'Inactivo' },
     { label: 'Conversiones', value: unit.conversions?.length ? renderConversions(unit.conversions) : 'No hay conversiones' },
   ];
 

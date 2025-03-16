@@ -36,12 +36,12 @@ export function ProductionOrderList() {
         ]);
 
         const workersMap = workersData.reduce((acc, worker) => {
-          acc[worker.id] = worker.name;
+          if (worker.id) acc[worker.id] = worker.name;
           return acc;
         }, {} as Record<string, string>);
 
         const unitsMap = unitsData.reduce((acc, unit) => {
-          acc[unit.id] = unit.name;
+          if (unit.id) acc[unit.id] = unit.name;
           return acc;
         }, {} as Record<string, string>);
 
@@ -93,7 +93,7 @@ export function ProductionOrderList() {
         const reactRoot = createRoot(root);
         reactRoot.render(
           <PrintOrder
-            orderNumber={order.id}
+            orderNumber={order.nro!}
             date={new Date(order.orderDate)}
             contactType="empleado"
             contactName={worker?.name || 'Empleado no encontrado'}

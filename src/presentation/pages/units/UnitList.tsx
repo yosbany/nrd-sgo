@@ -1,6 +1,7 @@
 import { GenericList } from '../../components/common/GenericList';
 import { Unit } from '../../../domain/models/unit.model';
 import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
+import { getStatusOptions } from '@/domain/enums/entity-status.enum';
 
 export function UnitList() {
   const unitService = new UnitServiceImpl();
@@ -12,6 +13,12 @@ export function UnitList() {
       header: 'Conversiones',
       accessor: 'conversions' as keyof Unit,
       render: (item: Unit) => item.conversions?.length || 0,
+    },
+    {
+      header: 'Estado',
+      accessor: 'status' as keyof Unit,
+      type: 'tag' as const,
+      tags: getStatusOptions()
     },
   ];
 

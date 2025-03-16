@@ -179,7 +179,7 @@ export const MobileOrders: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-medium">Pedido #{getShortId(order.id)}</span>
+                          <span className="font-medium">Pedido #{order.nro}</span>
                           <span className="text-sm text-muted-foreground">
                             {formatDate(order.orderDate)}
                           </span>
@@ -191,6 +191,9 @@ export const MobileOrders: React.FC = () => {
                       <div className="text-sm text-muted-foreground">
                         Cliente: {getCustomerName(order.customerId)}
                       </div>
+                      <div className="text-sm text-muted-foreground">
+                        Totales: {order.totalProducts} / {order.totalItems}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -200,7 +203,7 @@ export const MobileOrders: React.FC = () => {
                 <DialogHeader>
                   <DialogTitle>
                     <div className="flex flex-col gap-1">
-                      <span>Pedido #{getShortId(order.id)}</span>
+                      <span>Pedido #{order.nro}</span>
                       <span className="text-sm font-normal text-gray-500">
                         {formatDate(order.orderDate)}
                       </span>

@@ -11,6 +11,7 @@ import { UnitServiceImpl } from '../../../domain/services/unit.service.impl';
 import { Product } from '../../../domain/models/product.model';
 import { Recipe } from '../../../domain/models/recipe.model';
 import { OrderStatusLabel } from '@/domain/enums/order-status.enum';
+import { TypeInventory } from '@/domain/enums/type-inventory.enum';
 
 export function CustomerOrderDetails() {
   const { id } = useParams<{ id: string }>();
@@ -33,24 +34,24 @@ export function CustomerOrderDetails() {
         unitService.findAll()
       ]);
 
-      const customersMap = customersData.reduce((acc, customer) => ({
+      const customersMap = customersData.reduce<Record<string, string>>((acc, customer) => ({
         ...acc,
-        [customer.id]: customer.name
+        [customer.id as string]: customer.name
       }), {});
 
-      const productsMap = productsData.reduce((acc, product) => ({
+      const productsMap = productsData.reduce<Record<string, Product>>((acc, product) => ({
         ...acc,
-        [product.id]: product
+        [product.id as string]: product
       }), {});
 
-      const recipesMap = recipesData.reduce((acc, recipe) => ({
+      const recipesMap = recipesData.reduce<Record<string, Recipe>>((acc, recipe) => ({
         ...acc,
-        [recipe.id]: recipe
+        [recipe.id as string]: recipe
       }), {});
 
-      const unitsMap = unitsData.reduce((acc, unit) => ({
+      const unitsMap = unitsData.reduce<Record<string, string>>((acc, unit) => ({
         ...acc,
-        [unit.id]: unit.name
+        [unit.id as string]: unit.name
       }), {});
 
       setCustomers(customersMap);
@@ -67,10 +68,10 @@ export function CustomerOrderDetails() {
         header: 'Item',
         accessor: (item: CustomerOrder['items'][0]) => {
           let name = '';
-          if (item.typeItem === 'product') {
+          if (item.typeItem === TypeInventory.PRODUCTO) {
             const product = products[item.itemId];
             name = product?.name || 'Producto no encontrado';
-          } else if (item.typeItem === 'recipe') {
+          } else if (item.typeItem === TypeInventory.RECETA) {
             const recipe = recipes[item.itemId];
             name = recipe?.name || 'Receta no encontrada';
           }
@@ -80,17 +81,17 @@ export function CustomerOrderDetails() {
       {
         header: 'Tipo',
         accessor: (item: CustomerOrder['items'][0]) => {
-          return item.typeItem === 'product' ? 'Producto' : 'Receta';
+          return item.typeItem === TypeInventory.PRODUCTO ? 'Producto' : 'Receta';
         }
       },
       {
         header: 'Cantidad',
         accessor: (item: CustomerOrder['items'][0]) => {
           let unitName = 'Unidad';
-          if (item.typeItem === 'product') {
+          if (item.typeItem === TypeInventory.PRODUCTO) {
             const product = products[item.itemId];
             unitName = product?.salesUnitId ? units[product.salesUnitId] || 'Unidad' : 'Unidad';
-          } else if (item.typeItem === 'recipe') {
+          } else if (item.typeItem === TypeInventory.RECETA) {
             const recipe = recipes[item.itemId];
             unitName = recipe?.yieldUnitId ? units[recipe.yieldUnitId] || 'Unidad' : 'Unidad';
           }
@@ -103,12 +104,13 @@ export function CustomerOrderDetails() {
   };
 
   const getFields = (order: CustomerOrder) => [
-    { label: 'Cliente', value: customers[order.customerId] || 'Cliente no encontrado' },
+    { label: 'Cliente', value: customers[order.customerId] },
     { label: 'Estado', value: OrderStatusLabel[order.status] },
     { label: 'Fecha', value: new Date(order.orderDate).toLocaleDateString() },
-    { label: 'Items', value: renderItems(order.items) },
     { label: 'Total de Items', value: order.totalItems },
     { label: 'Total de Productos', value: order.totalProducts },
+    { label: 'Items', value: renderItems(order.items) },
+    
   ];
 
   if (!id) return null;

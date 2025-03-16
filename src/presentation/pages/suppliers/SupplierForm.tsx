@@ -1,13 +1,14 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericForm } from '../../components/common/GenericForm';
-import { Supplier, SupplierStatus } from '../../../domain/models/supplier.model';
+import { Supplier } from '../../../domain/models/supplier.model';
 import { SupplierServiceImpl } from '../../../domain/services/supplier.service.impl';
+import { getOptions } from '@/domain/enums/entity-status.enum';
 
 export function SupplierForm() {
   const { id } = useParams<{ id: string }>();
   const [supplier, setSupplier] = React.useState<Partial<Supplier>>({});
-  const supplierService = new SupplierServiceImpl();
+  const supplierService = React.useMemo(() => new SupplierServiceImpl(), []);
 
   React.useEffect(() => {
     if (id) {
@@ -15,7 +16,7 @@ export function SupplierForm() {
         if (data) setSupplier(data);
       });
     }
-  }, [id]);
+  }, [id, supplierService]);
 
   const fields = [
     {
@@ -37,7 +38,7 @@ export function SupplierForm() {
     {
       name: 'email',
       label: 'Email',
-      type: 'email' as const,
+      type: 'text' as const,
     },
     {
       name: 'address',
@@ -54,10 +55,7 @@ export function SupplierForm() {
       label: 'Estado',
       type: 'select' as const,
       required: true,
-      options: [
-        { value: SupplierStatus.ACTIVE, label: 'Activo' },
-        { value: SupplierStatus.INACTIVE, label: 'Inactivo' },
-      ],
+      options: getOptions(),
     },
   ];
 

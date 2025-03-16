@@ -1,14 +1,15 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { GenericForm } from '../../components/common/GenericForm';
-import { Customer, CustomerStatus } from '../../../domain/models/customer.model';
+import { Customer } from '../../../domain/models/customer.model';
 import { CustomerServiceImpl } from '../../../domain/services/customer.service.impl';
+import { getOptions } from '@/domain/enums/entity-status.enum';
 
 export function CustomerForm() {
   const { id } = useParams<{ id: string }>();
   const [customer, setCustomer] = React.useState<Customer | undefined>();
   const [isLoading, setIsLoading] = React.useState(true);
-  const customerService = new CustomerServiceImpl();
+  const customerService = React.useMemo(() => new CustomerServiceImpl(), []);
 
   React.useEffect(() => {
     const loadCustomer = async () => {
@@ -26,7 +27,7 @@ export function CustomerForm() {
     };
 
     loadCustomer();
-  }, [id]);
+  }, [id, customerService]);
 
   const fields = [
     {
@@ -55,10 +56,7 @@ export function CustomerForm() {
       label: 'Estado',
       type: 'select' as const,
       required: true,
-      options: [
-        { value: CustomerStatus.ACTIVE, label: 'Activo' },
-        { value: CustomerStatus.INACTIVE, label: 'Inactivo' },
-      ],
+      options: getOptions(),
     },
   ];
 

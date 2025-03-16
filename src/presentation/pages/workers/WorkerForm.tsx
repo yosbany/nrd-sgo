@@ -4,11 +4,12 @@ import { GenericForm } from '../../components/common/GenericForm';
 import { Worker, PaymentStatus, PaymentConcept } from '../../../domain/models/worker.model';
 import { WorkerServiceImpl } from '../../../domain/services/worker.service.impl';
 import { RoleServiceImpl } from '../../../domain/services/role.service.impl';
+import { getOptions } from '@/domain/enums/entity-status.enum';
 
 export function WorkerForm() {
   const { id } = useParams<{ id: string }>();
   const [worker, setWorker] = React.useState<Partial<Worker>>({});
-  const workerService = new WorkerServiceImpl();
+  const workerService = React.useMemo(() => new WorkerServiceImpl(), []);
 
   React.useEffect(() => {
     if (id) {
@@ -16,7 +17,7 @@ export function WorkerForm() {
         if (data) setWorker(data);
       });
     }
-  }, [id]);
+  }, [id, workerService]);
 
   const fields = [
     {
@@ -39,6 +40,13 @@ export function WorkerForm() {
       name: 'phone',
       label: 'Teléfono',
       type: 'text' as const,
+    },
+    {
+      name: 'status',
+      label: 'Estado',
+      type: 'select' as const,
+      required: true,
+      options: getOptions(),
     },
     {
       name: 'hireDate',
@@ -85,12 +93,12 @@ export function WorkerForm() {
           { 
             header: 'Fecha de Inicio', 
             accessor: 'startDate',
-            render: (value: Date) => new Date(value).toLocaleDateString('es-UY')
+            render: (value: unknown) => new Date(value as Date).toLocaleDateString('es-UY')
           },
           { 
             header: 'Fecha de Fin', 
             accessor: 'endDate',
-            render: (value: Date) => new Date(value).toLocaleDateString('es-UY')
+            render: (value: unknown) => new Date(value as Date).toLocaleDateString('es-UY')
           },
           { header: 'Días', accessor: 'day' },
         ],
@@ -139,7 +147,7 @@ export function WorkerForm() {
           { 
             header: 'Monto', 
             accessor: 'amount',
-            render: (value: number) => value?.toLocaleString('es-UY', {
+            render: (value: unknown) => (value as number)?.toLocaleString('es-UY', {
               style: 'currency',
               currency: 'UYU',
               currencyDisplay: 'symbol',
@@ -150,8 +158,8 @@ export function WorkerForm() {
           { 
             header: 'Estado', 
             accessor: 'status',
-            render: (value: PaymentStatus) => {
-              switch (value) {
+            render: (value: unknown) => {
+              switch (value as PaymentStatus) {
                 case PaymentStatus.PENDING:
                   return 'Pendiente';
                 case PaymentStatus.PAID:
@@ -164,8 +172,8 @@ export function WorkerForm() {
           { 
             header: 'Concepto', 
             accessor: 'concept',
-            render: (value: PaymentConcept) => {
-              switch (value) {
+            render: (value: unknown) => {
+              switch (value as PaymentConcept) {
                 case PaymentConcept.SALARY:
                   return 'Salario';
                 case PaymentConcept.LEAVE:
@@ -178,7 +186,7 @@ export function WorkerForm() {
           { 
             header: 'Fecha de Pago', 
             accessor: 'paymentDate',
-            render: (value: Date) => new Date(value).toLocaleDateString('es-UY')
+            render: (value: unknown) => new Date(value as Date).toLocaleDateString('es-UY')
           },
         ],
         form: {

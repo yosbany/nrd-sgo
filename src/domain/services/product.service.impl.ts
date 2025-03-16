@@ -1,19 +1,18 @@
-import { Product, ProductStatus, ProductSector } from '../models/product.model';
+import { Product } from '../models/product.model';
 import { IProductService } from './interfaces/product.service.interface';
 import { ProductRepositoryImpl } from '../repositories/product.repository.impl';
 import { IProductRepository } from '../repositories/interfaces/product.repository.interface';
 import { BaseServiceImpl } from './base.service.impl';
 import { UnitServiceImpl } from './unit.service.impl';
-import { SupplierServiceImpl } from './supplier.service.impl';
+import { EntityStatus } from '../enums/entity-status.enum';
+import { Sector } from '../enums/sector.enum';
 
 export class ProductServiceImpl extends BaseServiceImpl<Product, IProductRepository> implements IProductService {
   private unitService: UnitServiceImpl;
-  private supplierService: SupplierServiceImpl;
 
   constructor() {
     super(ProductRepositoryImpl, 'products');
     this.unitService = new UnitServiceImpl();
-    this.supplierService = new SupplierServiceImpl();
   }
 
   private async calculateUnitCosts(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'nro'>): Promise<Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'nro'>> {
@@ -28,21 +27,6 @@ export class ProductServiceImpl extends BaseServiceImpl<Product, IProductReposit
     }
 
     const updatedData = { ...data };
-
-    // Get supplier details if available
-    if (data.primarySupplierId) {
-      const supplier = await this.supplierService.findById(data.primarySupplierId);
-      if (supplier) {
-        updatedData.primarySupplier = {
-          id: supplier.id || '',
-          commercialName: supplier.commercialName,
-          email: supplier.email || '',
-          phone: supplier.phone || '',
-          status: supplier.status
-        };
-      }
-    }
-
     // Calculate sales unit cost if product is for sale
     if (data.isForSale && data.salesUnitId) {
       const conversion = purchaseUnit.conversions?.find(c => c.toUnitId === data.salesUnitId);
@@ -111,11 +95,7 @@ export class ProductServiceImpl extends BaseServiceImpl<Product, IProductReposit
     return this.repository.findBySku(sku);
   }
 
-  async findByState(state: ProductStatus): Promise<Product[]> {
-    return this.repository.findByState(state);
-  }
-
-  async findBySector(sector: ProductSector): Promise<Product[]> {
+  async findBySector(sector: Sector): Promise<Product[]> {
     return this.repository.findBySector(sector);
   }
 
@@ -123,12 +103,12 @@ export class ProductServiceImpl extends BaseServiceImpl<Product, IProductReposit
     return this.repository.findByPrimarySupplierId(supplierId);
   }
 
-  async findByMaterialUnit(unitId: string): Promise<Product[]> {
-    return this.repository.findByMaterialUnit(unitId);
+  async findByMaterialUnitId(unitId: string): Promise<Product[]> {
+    return this.repository.findByMaterialUnitId(unitId);
   }
 
-  async findBySalesUnit(unitId: string): Promise<Product[]> {
-    return this.repository.findBySalesUnit(unitId);
+  async findBySalesUnitId(unitId: string): Promise<Product[]> {
+    return this.repository.findBySalesUnitId(unitId);
   }
 
   async findByIsForSale(isForSale: boolean): Promise<Product[]> {
@@ -147,54 +127,7 @@ export class ProductServiceImpl extends BaseServiceImpl<Product, IProductReposit
     return this.repository.findByDesiredStockBelow(stock);
   }
 
-  async findById(id: string): Promise<Product | null> {
-    const product = await super.findById(id);
-    if (!product) {
-      return null;
-    }
-
-    // Get supplier details if available
-    if (product.primarySupplierId) {
-      const supplier = await this.supplierService.findById(product.primarySupplierId);
-      if (supplier) {
-        product.primarySupplier = {
-          id: supplier.id,
-          commercialName: supplier.commercialName,
-          email: supplier.email,
-          phone: supplier.phone,
-          status: supplier.status
-        };
-      }
-    }
-
-    return product;
-  }
-
-  async findAll(): Promise<Product[]> {
-    const products = await super.findAll();
-    
-    // Get supplier details for all products
-    const productsWithSuppliers = await Promise.all(
-      products.map(async (product) => {
-        if (product.primarySupplierId) {
-          const supplier = await this.supplierService.findById(product.primarySupplierId);
-          if (supplier) {
-            return {
-              ...product,
-              primarySupplier: {
-                id: supplier.id,
-                commercialName: supplier.commercialName,
-                email: supplier.email,
-                phone: supplier.phone,
-                status: supplier.status
-              }
-            };
-          }
-        }
-        return product;
-      })
-    );
-
-    return productsWithSuppliers;
+  async findByStatus(status: EntityStatus): Promise<Product[]> {
+    return this.repository.findByStatus(status);
   }
 } 

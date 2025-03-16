@@ -1,12 +1,8 @@
-import { Database, query, orderByChild, equalTo, get } from 'firebase/database';
-import { Product, ProductStatus } from '../models/product.model';
+import { Database } from 'firebase/database';
+import { Product } from '../models/product.model';
 import { BaseRepositoryImpl } from './base.repository.impl';
 import { IProductRepository } from './interfaces/product.repository.interface';
-
-type FirebaseProductData = Omit<Product, 'id'> & {
-  createdAt: string;
-  updatedAt: string;
-};
+import { EntityStatus } from '../enums/entity-status.enum';
 
 export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implements IProductRepository {
   protected modelProperties: (keyof Product)[] = [
@@ -18,7 +14,7 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
     'materialName',
     'materialCode',
     'salePrice',
-    'state',
+    'status',
     'salesUnitCost',
     'materialUnitCost',
     'purchasePrice',
@@ -46,8 +42,8 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
     return this.findByField('sku', sku);
   }
 
-  async findByState(state: Product['state']): Promise<Product[]> {
-    return this.findByField('state', state);
+  async findByStatus(status: EntityStatus): Promise<Product[]> {
+    return this.findByField('status', status);
   }
 
   async findBySector(sector: string): Promise<Product[]> {
@@ -58,11 +54,11 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
     return this.findByField('primarySupplierId', supplierId);
   }
 
-  async findByMaterialUnit(unitId: string): Promise<Product[]> {
+  async findByMaterialUnitId(unitId: string): Promise<Product[]> {
     return this.findByField('materialUnitId', unitId);
   }
 
-  async findBySalesUnit(unitId: string): Promise<Product[]> {
+  async findBySalesUnitId(unitId: string): Promise<Product[]> {
     return this.findByField('salesUnitId', unitId);
   }
 
@@ -74,82 +70,15 @@ export class ProductRepositoryImpl extends BaseRepositoryImpl<Product> implement
     return this.findByField('isMaterial', isMaterial);
   }
 
-  async findByStatus(status: ProductStatus): Promise<Product[]> {
-    return this.findByField('state', status);
-  }
-
-  async findBySaleStatus(isForSale: boolean): Promise<Product[]> {
-    return this.findByField('isForSale', isForSale);
-  }
-
-  async findByMaterialStatus(isMaterial: boolean): Promise<Product[]> {
-    return this.findByField('isMaterial', isMaterial);
-  }
-
   async findByDesiredStockBelow(stock: number): Promise<Product[]> {
-    const q = query(
-      this.getRef(),
-      orderByChild('desiredStock')
-    );
-    const snapshot = await get(q);
-    if (!snapshot.exists()) {
-      return [];
-    }
-    const data = snapshot.val() as Record<string, FirebaseProductData>;
-    return Object.entries(data)
-      .filter(([, value]) => value.desiredStock && value.desiredStock < stock)
-      .map(([id, value]) => this.mapDocumentToEntity(value as unknown as Record<string, unknown>, id));
-  }
-
-  async findBySalesChannel(channelCode: string): Promise<Product[]> {
-    const q = query(
-      this.getRef(),
-      orderByChild('salesChannels'),
-      equalTo(channelCode)
-    );
-    const snapshot = await get(q);
-    if (!snapshot.exists()) {
-      return [];
-    }
-    const data = snapshot.val() as Record<string, FirebaseProductData>;
-    return Object.entries(data)
-      .filter(([, value]) => 
-        value.salesChannels?.some(channel => channel.code === channelCode)
-      )
-      .map(([id, value]) => this.mapDocumentToEntity(value as unknown as Record<string, unknown>, id));
+    const products = await this.findAll();
+    return products.filter(product => product.desiredStock && product.desiredStock < stock);
   }
 
   async findByPriceRange(minPrice: number, maxPrice: number): Promise<Product[]> {
-    const q = query(
-      this.getRef(),
-      orderByChild('salePrice')
+    const products = await this.findAll();
+    return products.filter(product => 
+      product.salePrice >= minPrice && product.salePrice <= maxPrice
     );
-    const snapshot = await get(q);
-    if (!snapshot.exists()) {
-      return [];
-    }
-    const data = snapshot.val() as Record<string, FirebaseProductData>;
-    return Object.entries(data)
-      .filter(([, value]) => 
-        value.salePrice >= minPrice && value.salePrice <= maxPrice
-      )
-      .map(([id, value]) => this.mapDocumentToEntity(value as unknown as Record<string, unknown>, id));
-  }
-
-  async findByStockRange(minStock: number, maxStock: number): Promise<Product[]> {
-    const q = query(
-      this.getRef(),
-      orderByChild('desiredStock')
-    );
-    const snapshot = await get(q);
-    if (!snapshot.exists()) {
-      return [];
-    }
-    const data = snapshot.val() as Record<string, FirebaseProductData>;
-    return Object.entries(data)
-      .filter(([, value]) => 
-        value.desiredStock && value.desiredStock >= minStock && value.desiredStock <= maxStock
-      )
-      .map(([id, value]) => this.mapDocumentToEntity(value as unknown as Record<string, unknown>, id));
   }
 } 

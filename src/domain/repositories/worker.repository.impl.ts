@@ -15,7 +15,8 @@ export class WorkerRepositoryImpl extends BaseRepositoryImpl<Worker> implements 
     'vacationSalaryBalance',
     'bonusSalaryBalance',
     'leaveHistory',
-    'payments'
+    'payments',
+    'status'
   ];
 
   constructor(db: Database) {

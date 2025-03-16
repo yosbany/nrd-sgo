@@ -169,7 +169,7 @@ export const MobilePurchases: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-medium">Compra #{getShortId(order.id)}</span>
+                          <span className="font-medium">Compra #{order.nro}</span>
                           <span className="text-sm text-muted-foreground">
                             {formatDate(order.orderDate)}
                           </span>
@@ -185,12 +185,8 @@ export const MobilePurchases: React.FC = () => {
                           <span className="font-medium">{getSupplierName(order.supplierId)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Productos:</span>
-                          <span className="font-medium">{order.products?.length || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total:</span>
-                          <span className="font-medium">{order.totalItems || 0}</span>
+                          <span className="text-muted-foreground">Totales:</span>
+                          <span className="font-medium">{order.totalProducts} / {order.totalItems}</span>
                         </div>
                       </div>
                     </div>
@@ -201,7 +197,7 @@ export const MobilePurchases: React.FC = () => {
                 <DialogHeader>
                   <DialogTitle>
                     <div className="flex flex-col gap-1">
-                      <span>Compra #{getShortId(order.id)}</span>
+                      <span>Compra #{order.nro}</span>
                       <span className="text-sm font-normal text-gray-500">
                         {formatDate(order.orderDate)}
                       </span>

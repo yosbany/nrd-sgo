@@ -1,10 +1,5 @@
 import { BaseEntity } from './base.entity';
-
-export enum TaskFrequency {
-  DAILY = 'daily',
-  HOURLY = 'hourly',
-  END_OF_SHIFT = 'end_of_shift'
-}
+import { TaskFrequency } from '../enums/task-frequency.enum';
 
 export interface Task {
   taskName: string;

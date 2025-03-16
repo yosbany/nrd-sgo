@@ -6,7 +6,7 @@ import { BaseServiceImpl } from './base.service.impl';
 
 export class WorkerServiceImpl extends BaseServiceImpl<Worker, IWorkerRepository> implements IWorkerService {
   constructor() {
-    super(WorkerRepositoryImpl);
+    super(WorkerRepositoryImpl, 'workers');
   }
 
   async findByName(name: string): Promise<Worker[]> {

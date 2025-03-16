@@ -82,7 +82,7 @@ export const MobileProductionDelete: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-center text-muted-foreground">
-            Esta acción no se puede deshacer. Se eliminará la Orden #{order.consecutive || getShortId(order.id)} y todos sus datos asociados.
+            Esta acción no se puede deshacer. Se eliminará la Orden #{order.nro} y todos sus datos asociados.
           </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">

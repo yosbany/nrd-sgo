@@ -1,12 +1,13 @@
-import { Customer, CustomerStatus } from '../models/customer.model';
+import { Customer } from '../models/customer.model';
 import { ICustomerService } from './interfaces/customer.service.interface';
 import { ICustomerRepository } from '../repositories/interfaces/customer.repository.interface';
 import { CustomerRepositoryImpl } from '../repositories/customer.repository.impl';
 import { BaseServiceImpl } from './base.service.impl';
+import { EntityStatus } from '../enums/entity-status.enum';
 
 export class CustomerServiceImpl extends BaseServiceImpl<Customer, ICustomerRepository> implements ICustomerService {
   constructor() {
-    super(CustomerRepositoryImpl);
+    super(CustomerRepositoryImpl, 'customers');
   }
 
   async findByName(name: string): Promise<Customer[]> {
@@ -21,7 +22,7 @@ export class CustomerServiceImpl extends BaseServiceImpl<Customer, ICustomerRepo
     return this.repository.findByPhone(phone);
   }
 
-  async findByStatus(status: CustomerStatus): Promise<Customer[]> {
+  async findByStatus(status: EntityStatus): Promise<Customer[]> {
     const customers = await this.repository.findAll();
     return customers.filter(customer => customer.status === status);
   }

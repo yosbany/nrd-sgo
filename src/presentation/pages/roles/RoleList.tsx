@@ -1,4 +1,3 @@
-import React from 'react';
 import { GenericList } from '../../components/common/GenericList';
 import { Role } from '../../../domain/models/role.model';
 import { RoleServiceImpl } from '../../../domain/services/role.service.impl';

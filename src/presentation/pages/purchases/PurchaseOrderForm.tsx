@@ -7,7 +7,6 @@ import { SupplierServiceImpl } from '../../../domain/services/supplier.service.i
 import { ProductServiceImpl } from '../../../domain/services/product.service.impl';
 import { OrderStatus } from '@/domain/enums/order-status.enum';
 import { Product } from '@/domain/models/product.model';
-import { useLogger } from '@/lib/logger';
 import { Supplier } from '@/domain/models/supplier.model';
 import { toast } from 'sonner';
 
@@ -16,14 +15,13 @@ export function PurchaseOrderForm() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
-  const log = useLogger('PurchaseOrderForm');
   const orderType = React.useMemo(() => {
     const calculate = searchParams.get('calculate');
     const copy = searchParams.get('copy');
     return calculate || copy ? 'calculated' : 'manual';
   }, [searchParams]);
   const [order, setOrder] = React.useState<Partial<PurchaseOrder>>({
-    orderDate: new Date(),
+    orderDate: new Date(new Date().setHours(0, 0, 0, 0)),
     status: OrderStatus.PENDIENTE,
     products: []
   });
@@ -47,22 +45,33 @@ export function PurchaseOrderForm() {
         // Si hay un número de orden para copiar, usar el nuevo método copyOrder
         const copyNro = searchParams.get('copy');
         if (copyNro) {
-          log.info('Copiando orden existente', { copyNro });
+          console.log('Copiando orden existente', { copyNro });
           try {
             const copiedOrder = await orderService.copyOrder(copyNro);
-            setOrder(copiedOrder);
+            // Ajustar la fecha a medianoche local
+            const orderDate = copiedOrder.orderDate instanceof Date 
+              ? copiedOrder.orderDate 
+              : new Date(copiedOrder.orderDate || new Date());
+            
+            const localDate = new Date(orderDate.getTime() + orderDate.getTimezoneOffset() * 60000);
+            localDate.setHours(0, 0, 0, 0);
+
+            setOrder({
+              ...copiedOrder,
+              orderDate: localDate
+            });
 
             // Cargar los productos del proveedor de la orden copiada
             if (copiedOrder.supplierId) {
               const supplierProducts = await productService.findByPrimarySupplierId(copiedOrder.supplierId);
               setProducts(supplierProducts);
-              log.debug('Productos cargados del proveedor de la orden copiada', { 
+              console.log('Productos cargados del proveedor de la orden copiada', { 
                 supplierId: copiedOrder.supplierId,
                 productsCount: supplierProducts.length 
               });
             }
           } catch (error) {
-            log.error('Error al copiar orden', { error });
+            console.error('Error al copiar orden', { error });
             toast.error('La orden no existe o no se puede copiar');
             // Redirigir al listado de órdenes
             navigate('/purchase-orders');
@@ -77,15 +86,59 @@ export function PurchaseOrderForm() {
         // Si hay un ID de cálculo, establecer el proveedor
         const calculateId = searchParams.get('calculate');
         if (calculateId) {
-          log.info('Configurando orden de cálculo', { calculateId });
+          console.log('Configurando orden de cálculo', { calculateId });
           setOrder(prev => ({ ...prev, supplierId: calculateId }));
           // Cargar productos del proveedor seleccionado
           const supplierProducts = await productService.findByPrimarySupplierId(calculateId);
           setProducts(supplierProducts);
-          log.debug('Productos cargados para cálculo', { count: supplierProducts.length });
+          console.log('Productos cargados para cálculo', { count: supplierProducts.length });
         }
+
+        // Si estamos editando una orden existente, cargar sus datos
+        if (id) {
+          try {
+            const existingOrder = await orderService.findById(id);
+            if (existingOrder) {
+              console.log('Cargando orden existente', { 
+                id,
+                supplierId: existingOrder.supplierId,
+                productsCount: existingOrder.products?.length || 0
+              });
+              
+              // Asegurarnos de que la fecha esté en la zona horaria local y sin tiempo
+              const orderDate = existingOrder.orderDate instanceof Date 
+                ? existingOrder.orderDate 
+                : new Date(existingOrder.orderDate);
+              
+              const localDate = new Date(orderDate.getTime() + orderDate.getTimezoneOffset() * 60000);
+              localDate.setHours(0, 0, 0, 0);
+
+              // Cargar los productos del proveedor de la orden existente
+              let supplierProducts = productsData;
+              if (existingOrder.supplierId) {
+                supplierProducts = await productService.findByPrimarySupplierId(existingOrder.supplierId);
+                console.log('Productos cargados del proveedor de la orden existente', {
+                  supplierId: existingOrder.supplierId,
+                  productsCount: supplierProducts.length
+                });
+              }
+              
+              setProducts(supplierProducts);
+              setOrder({
+                ...existingOrder,
+                orderDate: localDate
+              });
+            }
+          } catch (error) {
+            console.error('Error al cargar la orden', { error });
+            toast.error('Error al cargar la orden');
+            navigate('/purchase-orders');
+            return;
+          }
+        }
+
       } catch (error) {
-        log.error('Error al cargar datos iniciales', { error });
+        console.error('Error al cargar datos iniciales', { error });
         toast.error('Error al cargar los datos');
       } finally {
         setIsLoading(false);
@@ -93,10 +146,10 @@ export function PurchaseOrderForm() {
     };
 
     loadInitialData();
-  }, [id, orderService, productService, searchParams, log, navigate]);
+  }, [id, orderService, productService, supplierService, searchParams, navigate]);
 
   const handleReferenceOrderChange = (value: unknown) => {
-    log.info('Cambiando orden de referencia', { value });
+    console.log('Cambiando orden de referencia', { value });
     orderService.findById(value as string)
       .then(referenceOrder => {
         if (referenceOrder) {
@@ -105,20 +158,20 @@ export function PurchaseOrderForm() {
             referenceOrderNumber: value as string,
             products: referenceOrder.products
           }));
-          log.debug('Orden de referencia actualizada', { 
+          console.log('Orden de referencia actualizada', { 
             orderId: referenceOrder.id,
             productsCount: referenceOrder.products.length 
           });
         }
       })
       .catch(error => {
-        log.error('Error al cargar orden de referencia', { error });
+        console.error('Error al cargar orden de referencia', { error });
       });
   };
 
   const handleSupplierChange = (value: unknown) => {
     const supplierId = value as string;
-    log.info('Iniciando cambio de proveedor', { 
+    console.log('Iniciando cambio de proveedor', { 
       supplierId,
       currentProductsCount: products.length,
       currentOrderProductsCount: order.products?.length || 0
@@ -126,7 +179,7 @@ export function PurchaseOrderForm() {
     
     // Primero actualizamos el supplierId
     setOrder(prev => {
-      log.debug('Actualizando estado de la orden', { 
+      console.log('Actualizando estado de la orden', { 
         previousSupplierId: prev.supplierId,
         newSupplierId: supplierId,
         previousProductsCount: prev.products?.length || 0
@@ -140,10 +193,10 @@ export function PurchaseOrderForm() {
 
     // Luego cargamos los productos del nuevo proveedor
     if (supplierId) {
-      log.debug('Iniciando carga de productos del proveedor', { supplierId });
+      console.log('Iniciando carga de productos del proveedor', { supplierId });
       productService.findByPrimarySupplierId(supplierId)
         .then(supplierProducts => {
-          log.info('Productos cargados exitosamente del proveedor', { 
+          console.log('Productos cargados exitosamente del proveedor', { 
             supplierId,
             productsCount: supplierProducts.length,
             products: supplierProducts.map(p => ({ id: p.id, name: p.name }))
@@ -151,7 +204,7 @@ export function PurchaseOrderForm() {
           setProducts(supplierProducts);
         })
         .catch(error => {
-          log.error('Error al cargar productos del proveedor', { 
+          console.error('Error al cargar productos del proveedor', { 
             error,
             supplierId,
             errorMessage: error instanceof Error ? error.message : 'Error desconocido'
@@ -159,7 +212,7 @@ export function PurchaseOrderForm() {
           setProducts([]); // En caso de error, limpiamos la lista
         });
     } else {
-      log.debug('Limpieza de productos - sin proveedor seleccionado', {
+      console.log('Limpieza de productos - sin proveedor seleccionado', {
         previousProductsCount: products.length
       });
       setProducts([]); // Si no hay proveedor seleccionado, limpiamos la lista
@@ -192,7 +245,7 @@ export function PurchaseOrderForm() {
           name: 'products',
           label: 'Productos',
           type: 'array' as const,
-          visible: () => true,
+          visible: (): boolean => true,
           arrayConfig: {
             columns: [
               { 
@@ -212,12 +265,26 @@ export function PurchaseOrderForm() {
                   label: 'Producto',
                   type: 'select' as const,
                   required: true,
-                  options: products.map(product => ({
-                    value: product.id || '',
-                    label: product.name
-                  })),
+                  options: products
+                    .filter(product => {
+                      // Obtener los IDs de los productos ya agregados
+                      const existingProductIds = new Set(
+                        (order.products || []).map(p => p.productId)
+                      );
+                      // Filtrar el producto si no está en la lista de productos ya agregados
+                      return !existingProductIds.has(product.id || '');
+                    })
+                    .map(product => ({
+                      value: product.id || '',
+                      label: product.name
+                    })),
                   onChange: (value: unknown) => {
-                    log.debug('Producto seleccionado', { value });
+                    const selectedProduct = products.find(p => p.id === value);
+                    if (selectedProduct?.desiredStock) {
+                      return {
+                        quantity: selectedProduct.desiredStock
+                      };
+                    }
                     return {};
                   }
                 },
@@ -295,7 +362,7 @@ export function PurchaseOrderForm() {
         name: 'products',
         label: 'Productos',
         type: 'array' as const,
-        visible: () => true,
+        visible: (): boolean => true,
         arrayConfig: {
           columns: [
             { 
@@ -315,12 +382,26 @@ export function PurchaseOrderForm() {
                 label: 'Producto',
                 type: 'select' as const,
                 required: true,
-                options: products.map(product => ({
-                  value: product.id || '',
-                  label: product.name
-                })),
+                options: products
+                  .filter(product => {
+                    // Obtener los IDs de los productos ya agregados
+                    const existingProductIds = new Set(
+                      (order.products || []).map(p => p.productId)
+                    );
+                    // Filtrar el producto si no está en la lista de productos ya agregados
+                    return !existingProductIds.has(product.id || '');
+                  })
+                  .map(product => ({
+                    value: product.id || '',
+                    label: product.name
+                  })),
                 onChange: (value: unknown) => {
-                  log.debug('Producto seleccionado', { value });
+                  const selectedProduct = products.find(p => p.id === value);
+                  if (selectedProduct?.desiredStock) {
+                    return {
+                      quantity: selectedProduct.desiredStock
+                    };
+                  }
                   return {};
                 }
               },
@@ -348,7 +429,7 @@ export function PurchaseOrderForm() {
         },
       }] : [])
     ];
-  }, [id, orderType, suppliers, products, handleReferenceOrderChange, handleSupplierChange, searchParams]);
+  }, [id, orderType, suppliers, products, handleReferenceOrderChange, handleSupplierChange, searchParams, supplierService]);
 
   if (isLoading) {
     return <div>Cargando...</div>;
@@ -362,6 +443,19 @@ export function PurchaseOrderForm() {
         initialValues={order}
         service={orderService}
         backPath="/purchase-orders"
+        transformValues={(values) => {
+          // Asegurarnos de que la fecha se guarde correctamente en UTC
+          const orderDate = values.orderDate instanceof Date 
+            ? values.orderDate 
+            : new Date(values.orderDate);
+          
+          orderDate.setHours(12, 0, 0, 0); // Establecer mediodía para evitar problemas de zona horaria
+          
+          return {
+            ...values,
+            orderDate
+          };
+        }}
       />
     </div>
   );

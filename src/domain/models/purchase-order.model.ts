@@ -7,6 +7,7 @@ export interface ProductItem {
 }
 
 export interface PurchaseOrder extends BaseEntity {
+  nro: string;
   orderDate: Date;
   status: OrderStatus;
   supplierId: string;
