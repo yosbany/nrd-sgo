@@ -31,7 +31,8 @@ console.log('All environment variables present:', {
   VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID
 });
 
-const firebaseConfig = {
+// Configuración para producción
+const prodConfig = {
   apiKey: "AIzaSyCdMDfbGDnJ39_BE3iCtvPOctdzd7W96A4",
   authDomain: "nrd-sgo-prod.firebaseapp.com",
   databaseURL: "https://nrd-sgo-prod-default-rtdb.firebaseio.com",
@@ -41,8 +42,22 @@ const firebaseConfig = {
   appId: "1:95818518262:web:5a77d39f5dee45877ae6d7"
 };
 
+// Configuración para desarrollo
+const devConfig = {
+  apiKey: "AIzaSyCrq7Am9kiE3levq6hOGBuh_wb3lGxfdT0",
+  authDomain: "nrd-sgo.firebaseapp.com",
+  databaseURL: "https://nrd-sgo-default-rtdb.firebaseio.com",
+  projectId: "nrd-sgo",
+  storageBucket: "nrd-sgo.firebasestorage.app",
+  messagingSenderId: "386786255981",
+  appId: "1:386786255981:web:95cabd428cf0ca17c58b64"
+};
+
+// Seleccionar la configuración según el ambiente
+const firebaseConfig = import.meta.env.PROD ? prodConfig : devConfig;
+
 // Log de la configuración (ocultando valores sensibles)
-console.log('Firebase configuration:', {
+console.log(`Firebase configuration (${import.meta.env.PROD ? 'PRODUCTION' : 'DEVELOPMENT'}):`, {
   ...firebaseConfig,
   apiKey: '***',
   messagingSenderId: '***',
