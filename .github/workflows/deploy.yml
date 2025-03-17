@@ -35,6 +35,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Debug Environment Variables
+        run: |
+          echo "Checking environment variables..."
+          if [ -n "$VITE_FIREBASE_API_KEY" ]; then
+            echo "VITE_FIREBASE_API_KEY is set"
+          else
+            echo "VITE_FIREBASE_API_KEY is NOT set"
+          fi
+          if [ -n "$VITE_FIREBASE_PROJECT_ID" ]; then
+            echo "VITE_FIREBASE_PROJECT_ID is set"
+          else
+            echo "VITE_FIREBASE_PROJECT_ID is NOT set"
+          fi
+        
       - name: Build
         run: npm run build
         
