@@ -32,19 +32,21 @@ console.log('All environment variables present:', {
 });
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyCdMDfbGDnJ39_BE3iCtvPOctdzd7W96A4",
+  authDomain: "nrd-sgo-prod.firebaseapp.com",
+  databaseURL: "https://nrd-sgo-prod-default-rtdb.firebaseio.com",
+  projectId: "nrd-sgo-prod",
+  storageBucket: "nrd-sgo-prod.firebasestorage.app",
+  messagingSenderId: "95818518262",
+  appId: "1:95818518262:web:5a77d39f5dee45877ae6d7"
 };
 
-// Log de la configuración final
+// Log de la configuración (ocultando valores sensibles)
 console.log('Firebase configuration:', {
   ...firebaseConfig,
-  apiKey: '***'
+  apiKey: '***',
+  messagingSenderId: '***',
+  appId: '***'
 });
 
 let app;
