@@ -12,6 +12,8 @@ import { DesktopOrderModal } from '@/presentation/components/orders/DesktopOrder
 import { Worker } from '@/domain/models/worker.model';
 import { PrintOrder } from '@/presentation/components/PrintOrder';
 import { createRoot } from 'react-dom/client';
+import { formatWhatsAppMessage, sendWhatsAppMessage } from '@/presentation/components/orders/WhatsAppMessage';
+import { ConfirmDialog } from '@/presentation/components/common/ConfirmDialog';
 
 export function ProductionOrderList() {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ export function ProductionOrderList() {
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
   const [units, setUnits] = React.useState<Record<string, string>>({});
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
+  const [noPhoneDialogOpen, setNoPhoneDialogOpen] = React.useState(false);
+  const [currentOrder, setCurrentOrder] = React.useState<ProductionOrder | null>(null);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -109,6 +113,39 @@ export function ProductionOrderList() {
     }
   };
 
+  const handleWhatsApp = (order: ProductionOrder) => {
+    const items = order.recipes.map(recipe => {
+      const recipeData = recipes.find(r => r.id === recipe.recipeId);
+      const unit = units[recipeData?.yieldUnitId || ''] || 'Unidad';
+      return {
+        quantity: recipe.quantity,
+        unit,
+        description: recipeData?.name || 'Receta no encontrada'
+      };
+    });
+
+    const worker = workersData.find(w => w.id === order.responsibleWorkerId);
+    
+    if (!worker?.phone) {
+      setCurrentOrder(order);
+      setNoPhoneDialogOpen(true);
+      return;
+    }
+
+    const message = formatWhatsAppMessage({
+      orderNumber: order.nro || '',
+      date: new Date(order.orderDate),
+      contactName: worker.name,
+      items,
+      totals: {
+        products: order.totalProducts || 0,
+        items: order.totalItems || 0
+      }
+    });
+
+    sendWhatsAppMessage(worker.phone, message);
+  };
+
   const columns = [
     {
       header: 'Trabajador',
@@ -173,6 +210,22 @@ export function ProductionOrderList() {
         workers={workersData}
       />
 
+      <ConfirmDialog
+        open={noPhoneDialogOpen}
+        onOpenChange={setNoPhoneDialogOpen}
+        title="No hay teléfono registrado"
+        description={`El trabajador ${workersData.find(w => w.id === currentOrder?.responsibleWorkerId)?.name || ''} no tiene número de teléfono registrado. Por favor, actualice los datos del trabajador antes de enviar el mensaje.`}
+        onConfirm={() => {
+          setNoPhoneDialogOpen(false);
+          if (currentOrder?.responsibleWorkerId) {
+            navigate(`/workers/${currentOrder.responsibleWorkerId}/edit`);
+          }
+        }}
+        onCancel={() => setNoPhoneDialogOpen(false)}
+        confirmText="Editar Trabajador"
+        cancelText="Cerrar"
+      />
+
       <GenericList<ProductionOrder>
         columns={columns}
         title="Órdenes de Producción"
@@ -181,6 +234,7 @@ export function ProductionOrderList() {
         service={orderService}
         type="production"
         onPrint={handlePrint}
+        onWhatsApp={handleWhatsApp}
       />
     </>
   );

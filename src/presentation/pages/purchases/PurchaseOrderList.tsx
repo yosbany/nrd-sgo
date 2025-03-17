@@ -12,6 +12,8 @@ import { DesktopOrderModal } from '@/presentation/components/orders/DesktopOrder
 import { Supplier } from '@/domain/models/supplier.model';
 import { PrintOrder } from '@/presentation/components/PrintOrder';
 import { createRoot } from 'react-dom/client';
+import { formatWhatsAppMessage, sendWhatsAppMessage } from '@/presentation/components/orders/WhatsAppMessage';
+import { ConfirmDialog } from '@/presentation/components/common/ConfirmDialog';
 
 export function PurchaseOrderList() {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ export function PurchaseOrderList() {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [units, setUnits] = React.useState<Record<string, string>>({});
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
+  const [noPhoneDialogOpen, setNoPhoneDialogOpen] = React.useState(false);
+  const [currentOrder, setCurrentOrder] = React.useState<PurchaseOrder | null>(null);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -109,6 +113,39 @@ export function PurchaseOrderList() {
     }
   };
 
+  const handleWhatsApp = (order: PurchaseOrder) => {
+    const items = order.products.map(product => {
+      const productData = products.find(p => p.id === product.productId);
+      const unit = units[productData?.purchaseUnitId || ''] || 'Unidad';
+      return {
+        quantity: product.quantity,
+        unit,
+        description: productData?.name || 'Producto no encontrado'
+      };
+    });
+
+    const supplier = suppliersData.find(s => s.id === order.supplierId);
+    
+    if (!supplier?.phone) {
+      setCurrentOrder(order);
+      setNoPhoneDialogOpen(true);
+      return;
+    }
+
+    const message = formatWhatsAppMessage({
+      orderNumber: order.nro || '',
+      date: new Date(order.orderDate),
+      contactName: supplier.commercialName,
+      items,
+      totals: {
+        products: order.totalProducts || 0,
+        items: order.totalItems || 0
+      }
+    });
+
+    sendWhatsAppMessage(supplier.phone, message);
+  };
+
   const columns = [
     {
       header: 'Proveedor',
@@ -179,6 +216,22 @@ export function PurchaseOrderList() {
         suppliers={suppliersData}
       />
 
+      <ConfirmDialog
+        open={noPhoneDialogOpen}
+        onOpenChange={setNoPhoneDialogOpen}
+        title="No hay teléfono registrado"
+        description={`El proveedor ${suppliersData.find(s => s.id === currentOrder?.supplierId)?.commercialName || ''} no tiene número de teléfono registrado. Por favor, actualice los datos del proveedor antes de enviar el mensaje.`}
+        onConfirm={() => {
+          setNoPhoneDialogOpen(false);
+          if (currentOrder?.supplierId) {
+            navigate(`/suppliers/${currentOrder.supplierId}/edit`);
+          }
+        }}
+        onCancel={() => setNoPhoneDialogOpen(false)}
+        confirmText="Editar Proveedor"
+        cancelText="Cerrar"
+      />
+
       <GenericList<PurchaseOrder>
         columns={columns}
         title="Órdenes de Compra"
@@ -187,6 +240,7 @@ export function PurchaseOrderList() {
         service={orderService}
         type="purchase"
         onPrint={handlePrint}
+        onWhatsApp={handleWhatsApp}
       />
     </>
   );

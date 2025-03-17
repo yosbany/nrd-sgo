@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/presentation/components/ui/button';
-import { Plus, Pencil, Trash2, Eye, Search, Printer } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, Search, Printer, MessageCircle } from 'lucide-react';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
 import { BaseEntity } from '@/domain/models/base.entity';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ interface GenericListProps<T extends BaseEntity> {
   service: BaseService<T>;
   type?: 'customer' | 'production' | 'purchase';
   onPrint?: (item: T) => void;
+  onWhatsApp?: (item: T) => void;
 }
 
 const Tag: React.FC<{ config: TagConfig }> = ({ config }) => {
@@ -75,6 +76,7 @@ export function GenericList<T extends BaseEntity>({
   backPath,
   service,
   onPrint,
+  onWhatsApp,
 }: GenericListProps<T>) {
   const [items, setItems] = React.useState<T[]>([]);
   const [filteredItems, setFilteredItems] = React.useState<T[]>([]);
@@ -91,6 +93,19 @@ export function GenericList<T extends BaseEntity>({
     accessor: 'actions' as keyof T,
     render: (item: T) => (
       <div className="flex gap-2 justify-end">
+        {onWhatsApp && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onWhatsApp(item);
+            }}
+            title="Enviar por WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+        )}
         {onPrint && (
           <Button
             variant="ghost"

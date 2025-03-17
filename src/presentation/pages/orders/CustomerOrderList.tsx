@@ -16,6 +16,8 @@ import { PrintOrder } from '@/presentation/components/PrintOrder';
 import { createRoot } from 'react-dom/client';
 import { BaseService } from '@/domain/interfaces/base-service.interface';
 import { TypeInventory } from '../../../domain/enums/type-inventory.enum';
+import { formatWhatsAppMessage, sendWhatsAppMessage } from '@/presentation/components/orders/WhatsAppMessage';
+import { ConfirmDialog } from '@/presentation/components/common/ConfirmDialog';
 
 interface OrderItem {
   quantity: number;
@@ -37,6 +39,8 @@ export function CustomerOrderList() {
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
   const [units, setUnits] = React.useState<Record<string, string>>({});
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = React.useState(false);
+  const [noPhoneDialogOpen, setNoPhoneDialogOpen] = React.useState(false);
+  const [currentOrder, setCurrentOrder] = React.useState<CustomerOrder | null>(null);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -156,6 +160,61 @@ export function CustomerOrderList() {
     }
   };
 
+  const handleWhatsApp = (order: CustomerOrder) => {
+    if (!order.items || order.items.length === 0) {
+      alert('No hay items para enviar');
+      return;
+    }
+
+    const items = order.items.map(item => {
+      let description = '';
+      let unit = 'Unidad';
+
+      if (item.typeItem === TypeInventory.PRODUCTO) {
+        const productData = products.find(p => p.id === item.itemId);
+        const unitId = productData?.salesUnitId;
+        if (unitId && unitId in units) {
+          unit = units[unitId];
+        }
+        description = productData?.name || 'Producto no encontrado';
+      } else if (item.typeItem === TypeInventory.RECETA) {
+        const recipeData = recipes.find(r => r.id === item.itemId);
+        const unitId = recipeData?.yieldUnitId;
+        if (unitId && unitId in units) {
+          unit = units[unitId];
+        }
+        description = recipeData?.name || 'Receta no encontrada';
+      }
+
+      return {
+        quantity: item.quantity,
+        unit,
+        description
+      };
+    });
+
+    const customer = customersData.find(c => c.id === order.customerId);
+    
+    if (!customer?.phone) {
+      setCurrentOrder(order);
+      setNoPhoneDialogOpen(true);
+      return;
+    }
+
+    const message = formatWhatsAppMessage({
+      orderNumber: order.nro || '',
+      date: new Date(order.orderDate),
+      contactName: customer.name,
+      items,
+      totals: {
+        products: order.totalProducts || 0,
+        items: order.totalItems || 0
+      }
+    });
+
+    sendWhatsAppMessage(customer.phone, message);
+  };
+
   const columns = [
     {
       header: 'Cliente',
@@ -193,6 +252,22 @@ export function CustomerOrderList() {
         customers={customersData}
       />
 
+      <ConfirmDialog
+        open={noPhoneDialogOpen}
+        onOpenChange={setNoPhoneDialogOpen}
+        title="No hay teléfono registrado"
+        description={`El cliente ${customersData.find(c => c.id === currentOrder?.customerId)?.name || ''} no tiene número de teléfono registrado. Por favor, actualice los datos del cliente antes de enviar el mensaje.`}
+        onConfirm={() => {
+          setNoPhoneDialogOpen(false);
+          if (currentOrder?.customerId) {
+            navigate(`/customers/${currentOrder.customerId}/edit`);
+          }
+        }}
+        onCancel={() => setNoPhoneDialogOpen(false)}
+        confirmText="Editar Cliente"
+        cancelText="Cerrar"
+      />
+
       <GenericList<CustomerOrder>
         columns={columns}
         title="Pedidos de Clientes"
@@ -201,6 +276,7 @@ export function CustomerOrderList() {
         service={orderService as BaseService<CustomerOrder>}
         type="customer"
         onPrint={handlePrint}
+        onWhatsApp={handleWhatsApp}
       />
     </>
   );
