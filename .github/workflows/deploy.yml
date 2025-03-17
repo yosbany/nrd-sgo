@@ -25,6 +25,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Debug Environment
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+        run: |
+          echo "Checking Firebase configuration..."
+          echo "Project ID is set: ${{ secrets.VITE_FIREBASE_PROJECT_ID != '' }}"
+          echo "Database URL is set: ${{ secrets.VITE_FIREBASE_DATABASE_URL != '' }}"
+          
       - name: Build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
