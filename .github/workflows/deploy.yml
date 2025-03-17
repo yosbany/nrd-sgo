@@ -38,19 +38,43 @@ jobs:
       - name: Debug Environment Variables
         run: |
           echo "Checking environment variables..."
-          if [ -n "$VITE_FIREBASE_API_KEY" ]; then
-            echo "VITE_FIREBASE_API_KEY is set"
-          else
-            echo "VITE_FIREBASE_API_KEY is NOT set"
-          fi
-          if [ -n "$VITE_FIREBASE_PROJECT_ID" ]; then
-            echo "VITE_FIREBASE_PROJECT_ID is set"
-          else
-            echo "VITE_FIREBASE_PROJECT_ID is NOT set"
-          fi
+          for var in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_DATABASE_URL VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID VITE_APP_NAME VITE_APP_ENV
+          do
+            if [ -n "${!var}" ]; then
+              echo "$var is set"
+            else
+              echo "$var is NOT set"
+              exit 1
+            fi
+          done
+        
+      - name: Create env file
+        run: |
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env
+          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env
+          echo "VITE_FIREBASE_DATABASE_URL=${{ secrets.VITE_FIREBASE_DATABASE_URL }}" >> .env
+          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env
+          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env
+          echo "VITE_APP_NAME=${{ secrets.VITE_APP_NAME }}" >> .env
+          echo "VITE_APP_ENV=production" >> .env
         
       - name: Build
         run: npm run build
+        
+      - name: Verify Build Output
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "Error: dist/index.html not found"
+            exit 1
+          fi
+          echo "Checking for Firebase configuration in build output..."
+          if grep -r "VITE_FIREBASE" dist/; then
+            echo "Found Firebase configuration references"
+          else
+            echo "Warning: No Firebase configuration found in build output"
+          fi
         
       - name: Setup Pages
         uses: actions/configure-pages@v3
